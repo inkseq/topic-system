@@ -86,5 +86,24 @@
     "made-for-kids framing"
   ],
   "series": [],
-  "first_20": []
+  "first_20": [],
+  "operating_model": {
+    "type": "weekly_operator",
+    "long_form": {
+      "episodes_per_week": 1,
+      "minutes": "3-6"
+    },
+    "shorts_per_episode": "2-3 vertical cuts from the long-form episode",
+    "shorts_platforms": [
+      "YouTube Shorts",
+      "TikTok",
+      "Instagram Reels"
+    ],
+    "retention_curve": [
+      "pay off the title/thumbnail promise in the first 5 seconds",
+      "re-hook with a twist or a laugh about every third of the runtime",
+      "end right after the payoff - no long outro"
+    ],
+    "phase_1_target": "30-50 episodes before heavy optimisation (Paddy Galloway's phase 1)"
+  }
 }

@@ -28,6 +28,6 @@ if not (DATA / week / "signals.json").exists() or "--refresh" in sys.argv:
     demand.collect(week)
 if angles.build(week, mode) is None:
     sys.exit("Stopped before the shortlist: see the message above.")
-shortlist.build(week)
+shortlist.build(week, mode)
 graph.build(week)
 memo.build(week, mode)

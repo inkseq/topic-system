@@ -141,7 +141,17 @@ Cast:
 Relationships: {pos['relationships']}
 Tone rules: {'; '.join(pos['tone_rules'])}
 No-go: {'; '.join(pos['no_go'])}
-Possible series: {', '.join(pos.get('series', [])) or '-'}"""
+Possible series: {', '.join(pos.get('series', [])) or '-'}""" + operating_text(pos)
+
+
+def operating_text(pos):
+    om = pos.get("operating_model")
+    if not om:
+        return ""
+    lf = om.get("long_form", {})
+    return (f"\nOperating model ({om.get('type')}): {lf.get('episodes_per_week', 1)} long-form episode a week of "
+            f"{lf.get('minutes', '3-6')} minutes, plus {om.get('shorts_per_episode', '2-3 Shorts')}. "
+            f"Retention: {'; '.join(om.get('retention_curve', []))}.")
 
 
 def system_prompt(pos):
@@ -347,7 +357,36 @@ def validate(t, cast):
     return problems
 
 
-CALIBRATED = ["demand", "emotional_pull", "packaging", "takeaway", "cast_fit"]
+CALIBRATED = ["demand", "emotional_pull", "packaging", "takeaway", "cast_fit", "ccn"]
+
+
+# ---------- core / casual / new viewer check (Paddy Galloway) ----------
+
+def ccn_scores(topics, llm, pos):
+    items = "\n".join(f"- key={t['key']} | {t['topic']} | takeaway: {t['takeaway']}" for t in topics)
+    user = f"""Score each topic for three viewer groups, 1-5 each with a one-line reason:
+- core: would people who watch most of our videos love it? The channel has no videos yet, so core means the
+  positioning's audience: {pos['audience']['who']} ({pos['audience']['age_band']}).
+- casual: would occasional viewers of this kind of channel click it?
+- new: would someone who has never seen the channel understand the idea from a title and thumbnail and click?
+Calibrate: 3 is average and a 5 is rare. Channels die when they serve only core or only new viewers, so be honest
+about topics that only work for one group.
+
+Return JSON only: {{"ccn": {{"<key>": {{"core": [4, "reason"], "casual": [3, "reason"], "new": [3, "reason"]}}}}}}
+
+TOPICS
+{items}"""
+    return llm.chat("C-ccn", system_prompt(pos), user, max_tokens=160 * len(topics) + 500, est_usd=0.06)["ccn"]
+
+
+def apply_ccn(t, detail):
+    """Store the three sub-scores, their rounded mean as the 'ccn' dimension, and a one-group-only flag."""
+    vals = {g: int(detail[g][0]) for g in ("core", "casual", "new")}
+    t["ccn_detail"] = {g: {"score": vals[g], "reason": detail[g][1]} for g in vals}
+    t["scores"]["ccn"] = round(sum(vals.values()) / 3)
+    strong = [g for g, v in vals.items() if v >= 4]
+    if len(strong) == 1 and all(v <= 2 for g, v in vals.items() if g != strong[0]):
+        t["audience_flag"] = f"{strong[0]}-only"
 
 
 def calibrate(topics, cap):
@@ -432,10 +471,21 @@ def build(week=None, mode="api"):
             retried = True
             missing = [t for t in topics if not t.get("scores")]
             batches = [(f"PR{i // bs + 1}", missing[i:i + bs]) for i in range(0, len(missing), bs)]
+    packaged = [t for t in topics if t.get("scores")]
+    if not pending:
+        try:
+            detail = ccn_scores(packaged, llm, pos)
+            for t in packaged:
+                if t["key"] in detail:
+                    apply_ccn(t, detail[t["key"]])
+        except ManualPending:
+            pending.append("C-ccn")
+        except (RuntimeError, json.JSONDecodeError, ValueError, KeyError, IndexError) as e:
+            print(f"  C-ccn skipped: {e}")
     if pending:
         print(f"  waiting for answers to {', '.join(pending)} in {llm.dir}; rerun when they are in place")
     else:
-        calibrate([t for t in topics if t.get("scores")], cfg["calibration"]["max_share_of_fives"])
+        calibrate(packaged, cfg["calibration"]["max_share_of_fives"])
     save_json(rd / "topics.json", {"week": week, "llm_mode": mode, "llm_model": llm.cfg["model"] if mode == "api" else "manual",
                                    "llm_cost_usd": round(llm.spent, 4), "llm_calls": llm.calls,
                                    "positioning": {"name": pos["name"], "status": pos["status"]},

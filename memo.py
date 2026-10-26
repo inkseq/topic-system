@@ -71,8 +71,14 @@ def build(week=None, mode="api"):
         if i.get("in_pillar"):
             pillar_counts[i["pillar"]] = pillar_counts.get(i["pillar"], 0) + 1
     top = "\n".join(f"- {t['topic_id']} | {t['topic']} | pillar {t.get('pillar')} | total {t['total']} | "
-                    f"pull {t.get('emotional_pull')} | demand {t['demand']} | angles {', '.join(t['angles'])}"
-                    + (f" | publish by {t['publish_by']}" if t.get("publish_by") else "") for t in short["topics"])
+                    f"pull {t.get('emotional_pull')} | demand {t['demand']} | ccn {t.get('ccn')} "
+                    f"({'/'.join(str((t.get('ccn_detail') or {}).get(g, {}).get('score', '-')) for g in ('core', 'casual', 'new'))})"
+                    + (f" {t['audience_flag']}" if t.get("audience_flag") else "")
+                    + (f" | publish by {t['publish_by']}" if t.get("publish_by") else "")
+                    + "".join(f"\n    thumb {th['kind']}: {th['title']} / \"{th['thumb_text']}\" / first 5 s: {th['first_5s']}"
+                              for th in (t.get("thumbnails") or []))
+                    + "".join(f"\n    short: {s['moment']}" for s in (t.get("short_cuts") or []))
+                    for t in short["topics"][:5])
     evidence = []
     for t in meta["topics"]:
         for e in t.get("evidence", [])[:2]:
@@ -97,15 +103,17 @@ Sections, in this order:
 2. ## Scoreboard - use the numbers below exactly. If they say no data yet, say so in one line and name what we
    will measure first.
 3. ## Strategy - grade last week's bet A-F with the reason (if there was none, say "first week - no bet to
-   grade"); ONE main move; 3 episode plays from the shortlist, each with its first-3-seconds line; one
-   experiment; one thing to stop.
+   grade"); ONE main move; then, following the operating model, exactly ONE main episode for this week from the
+   shortlist with its core/casual/new scores, its three thumbnail options (for YouTube's A/B test), its re-hooks and
+   its 2-3 Shorts cuts; two bench episodes for the next weeks; one experiment; one thing to stop.
 4. ## Watchlist - 2-4 things to check next week.
 
 Then return this week's bet so next week can grade it.
 
 Return JSON only: {{"memo_markdown": "...", "bet": {{"main_move": "...", "hypothesis": "...",
-"metric": "...", "target": "...", "plays": [{{"topic_id": "...", "title": "...", "first_3s": "..."}}],
-"experiment": "...", "stop": "..."}}, "last_bet_grade": {{"grade": "A-F or n/a", "reason": "..."}}}}
+"metric": "...", "target": "...", "main_episode": {{"topic_id": "...", "title": "...",
+"thumbnail_options": ["kind: title", "kind: title", "kind: title"], "short_cuts": ["..."]}},
+"bench": ["topic_id", "topic_id"], "experiment": "...", "stop": "..."}}, "last_bet_grade": {{"grade": "A-F or n/a", "reason": "..."}}}}
 
 POSITIONING STATUS: {pos['status']} (option {pos.get('option')}). If provisional, say so in one line.
 
@@ -121,7 +129,10 @@ LAST WEEK'S BET
 THIS WEEK'S FUNNEL: {meta.get('ideas_total')} ideas -> {meta.get('ideas_in_pillar')} in pillars -> {len(short['topics'])} shortlisted.
 Ideas per pillar: {json.dumps(pillar_counts)}
 
-SHORTLIST
+OPERATING MODEL: {pos.get('operating_model', {}).get('type', 'not set')} - one long-form episode a week (3-6 min)
+plus 2-3 Shorts cut from it; phase 1 = {pos.get('operating_model', {}).get('phase_1_target', '30-50 episodes')}.
+
+SHORTLIST (top 5 in detail; the full list is the bench)
 {top}
 
 EVIDENCE SAMPLE
@@ -147,6 +158,8 @@ PREVIOUS MEMOS
     path = MEMOS / f"{week}.md"
     path.write_text(f"# Weekly memo {week}\n\n_Positioning: {pos['name']} ({pos['status']})._\n\n{text}\n", encoding="utf-8")
     bet = {"week": week, **out["bet"], "graded_last": out.get("last_bet_grade")}
+    if pos.get("operating_model", {}).get("type") == "weekly_operator" and not bet.get("main_episode"):
+        print("  note: weekly operator model expects exactly one main_episode in the bet")
     bets = [b for b in bets if b["week"] != week] + [bet]
     save_json(BETS, sorted(bets, key=lambda b: b["week"]))
     print(f"[memo] wrote {path} ({words} words); bet saved to {BETS}")

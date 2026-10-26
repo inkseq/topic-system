@@ -22,9 +22,11 @@ demand.py     YouTube outliers (median of ~10 neighbouring uploads), Wikipedia t
               round-number anniversaries 3-6 weeks ahead, Google Trends daily searches (US), "dense"
               sources (Wikipedia Unusual articles, Public Domain Review, Atlas Obscura, Gutenberg) and
               the team's favourites inbox
-angles.py     LLM: signals -> 120 raw ideas (pillar, emotional pull, series) -> top 30 packaged
-              (5 packages, conflict, want/trouble/payoff outline, facts, calibrated scores)
-shortlist.py  weighted rank, pass/fail gates, category cap, near-duplicate rule, link check
+angles.py     LLM: signals -> 120+ raw ideas (pillar, emotional pull, series) -> top 30 packaged
+              (5 packages, conflict, want/trouble/payoff outline, facts) -> core/casual/new check ->
+              calibrated scores
+shortlist.py  weighted rank, pass/fail gates, category cap, near-duplicate rule, fresh slots, then a
+              production plan for the 15 (3 thumbnail options, Shorts cuts, re-hooks), link check
 graph.py      data/<week>/graph.json for the private Idea Map page
 memo.py       weekly strategy memo + data/bets.json
 run_weekly.py everything in order
@@ -131,7 +133,7 @@ To remove it: `schtasks /Delete /TN "Topic shortlist" /F`.
 | YouTube Data API | Free. About 32 channels × 3–8 units, roughly 200 of the 10,000 free daily units. |
 | Wikipedia Pageviews and On-this-day, Reddit Atom feeds, Google Trends RSS | Free. No key needed. About 22 On-this-day requests plus about 40 pageview lookups, and 1 Trends request. |
 | Dense sources | Free. 3 Wikipedia pages, 2 RSS feeds and 1 Gutenberg page per run, each after a robots.txt check and a 1-second pause. |
-| LLM (Sonnet 5.5 via OpenRouter, USD 2 / 10 per M tokens in/out) | 1 ideas call (about 120 ideas), 4 packaging batches and 1 memo. Roughly 50k tokens in and 70k out, so **about USD 0.80**. There is a hard stop at `llm.max_usd_per_run` = USD 1.80, and answers are cached so reruns are free. |
+| LLM (Sonnet 5.5 via OpenRouter, USD 2 / 10 per M tokens in/out) | 1 ideas call (about 120 ideas), 4 packaging batches, 1 audience check, 1 production plan for the shortlist and 1 memo. Roughly 60k tokens in and 90k out, so **about USD 1.00**. There is a hard stop at `llm.max_usd_per_run` = USD 1.80, and answers are cached so reruns are free. |
 
 ## Favourites and dense sources
 
@@ -229,12 +231,31 @@ The weighted criteria are scored 1–5, where 5 is best. Default weights are in 
 - **Takeaway**: one clear thing learned or felt.
 - **Cast fit**: one speaker per shot, at most two characters on screen, no crowds or real likenesses.
 - **Timeliness**: 5 = dated anniversary, 4 = live trend, 3 = evergreen.
+- **Core / casual / new** (`ccn`, Paddy Galloway's check): three sub-scores, each with a one-line reason.
+  - Core: would people who watch most of our videos love it? Until the channel has videos, core means the
+    positioning's audience.
+  - Casual: would occasional viewers click?
+  - New: would someone who has never seen the channel understand it and click?
+  - `ccn` is their rounded mean.
+  - A topic that serves only one group (one score of 4 or more, the other two 2 or less) is flagged
+    "core-only", "casual-only" or "new-only".
 - **Taste**: 5 when the idea grows from a team favourite, otherwise 3.
 - **Novelty**: 5 when a dense source supplies a subject no YouTube outlier covers, 4 when dense and YouTube
   overlap, otherwise 3.
 
-Current default weights are in `config/settings.json`: demand 0.20, emotional pull 0.25, packaging 0.15, then 0.08
-each for takeaway, cast fit, timeliness, taste and novelty.
+Current default weights are in `config/settings.json`:
+
+| Criterion | Weight |
+|---|---|
+| Emotional pull | 0.25 |
+| Demand | 0.18 |
+| Core / casual / new | 0.15 |
+| Packaging | 0.14 |
+| Timeliness | 0.06 |
+| Taste | 0.06 |
+| Novelty | 0.06 |
+| Takeaway | 0.05 |
+| Cast fit | 0.05 |
 - **Series bonus:** +0.1 to the total.
 
 **Gates (pass/fail, not points).** A topic is held back if any of these fail:
@@ -265,6 +286,35 @@ Packaging rules the LLM is given ("legit bait"):
 - AI, models or production methods are never mentioned.
 - Reddit posts are used only as themes; no private person's story is retold.
 
+## Operating model and production plan
+
+`data/positioning.json` holds an `operating_model`. The default is `weekly_operator`:
+
+- One long-form episode a week, 3–6 minutes long.
+- 2–3 vertical Shorts are cut from it for YouTube Shorts, TikTok and Reels.
+- **Retention curve** (MrBeast's, scaled down):
+  - the promise is paid off in the first 5 seconds;
+  - a twist or laugh re-hooks the viewer about every third;
+  - the video ends right after the payoff.
+- **Phase 1:** 30–50 episodes before heavy optimisation.
+
+Because only one episode ships each week, the 15-topic shortlist works as a **bench** of candidate episodes. After
+ranking, a production step plans each of the 15:
+
+- **Three thumbnail options** of different *kinds*, for example a cast reaction close-up, the object or result, and
+  a before/after contrast. They are not wording variants; they are meant for YouTube's built-in title and
+  thumbnail A/B test. Each option has:
+  - a title;
+  - thumbnail text of 4 words or fewer;
+  - 1–3 focal points;
+  - a one-line "glance test";
+  - how the first 5 seconds pay off that exact promise (legit bait).
+- **2–3 Shorts cuts** that work on their own.
+- **Re-hooks** at about one third and two thirds of the runtime.
+
+Code flags missing kinds, thumbnail text over 4 words, focal-point counts outside 1–3, and the wrong number of
+Shorts cuts. Any new fact in a re-hook or Shorts cut needs checking like the main facts.
+
 ## Weekly memo and bets
 
 `memo.py` writes `data/memos/YYYY-Www.md`, at most about 1,500 words. It reads:
@@ -279,17 +329,19 @@ Packaging rules the LLM is given ("legit bait"):
 |---|---|
 | **Signal** | Up to 3 trends in our pillars, each tagged new / building / saturating / disproven, with evidence. |
 | **Scoreboard** | Our videos against our own baseline (median 7-day views), computed in code. Says "no data yet" until videos exist, and lists resurfacing candidates. |
-| **Strategy** | Grades last week's bet A–F with the reason, then gives one main move, 3 episode plays with first-3-seconds lines, one experiment and one thing to stop. |
+| **Strategy** | Grades last week's bet A–F with the reason. Then, following the operating model, picks exactly **one main episode** with its core/casual/new scores, three thumbnail options, re-hooks and Shorts cuts, plus two bench episodes, one experiment and one thing to stop. |
 | **Watchlist** | 2–4 things to check next week. |
 
 This week's bet is stored as structured data in `data/bets.json` (main move, hypothesis, metric, target,
-plays, experiment, stop), so next week's memo can grade it.
+main episode with thumbnail options and Shorts cuts, bench, experiment, stop), so next week's memo can grade
+it.
 
 ## Idea Map export
 
 `graph.py` writes `data/<week>/graph.json`:
 
-- **Nodes:** topic, category, angle, and the evidence kinds youtube, wikipedia, reddit, anniversary and trend.
+- **Nodes:** topic, category, angle, and the evidence kinds youtube, wikipedia, reddit, anniversary, trend,
+  dense and favorite. Topic nodes carry core/casual/new, the three thumbnail options and the Shorts cuts.
 - **Links:** category, angle, evidence, and "related" when two topics share evidence.
 - **Meta:** funnel counts and signal totals.
 

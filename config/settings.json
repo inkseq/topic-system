@@ -48,14 +48,15 @@
     "package_top": 30
   },
   "weights": {
-    "demand": 0.2,
+    "demand": 0.18,
     "emotional_pull": 0.25,
-    "packaging": 0.15,
-    "takeaway": 0.08,
-    "cast_fit": 0.08,
-    "timeliness": 0.08,
-    "taste": 0.08,
-    "novelty": 0.08
+    "packaging": 0.14,
+    "ccn": 0.15,
+    "takeaway": 0.05,
+    "cast_fit": 0.05,
+    "timeliness": 0.06,
+    "taste": 0.06,
+    "novelty": 0.06
   },
   "shortlist": {
     "size": 15,

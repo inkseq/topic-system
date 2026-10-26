@@ -50,6 +50,7 @@ def build(week=None):
     w = short.get("weights") or weights()
     bonus = settings()["shortlist"].get("series_bonus", 0)
     rank = {t["key"]: i + 1 for i, t in enumerate(short["topics"])}
+    prod = load_json(rd / "production.json") if (rd / "production.json").exists() else {}
 
     nodes, links, seen = [], [], set()
 
@@ -67,7 +68,9 @@ def build(week=None):
              "series": bool(t.get("series")), "score": total(t, w, bonus), "rank": rank.get(t["key"]),
              "takeaway": t["takeaway"], "why": t.get("why_demand", ""), "conflict": t.get("conflict"),
              "publish_by": t.get("publish_by"),
-             "favorite": t.get("favorite"),
+             "favorite": t.get("favorite"), "ccn": t.get("ccn_detail"), "audience_flag": t.get("audience_flag"),
+             "thumbnails": (prod.get(t["key"]) or {}).get("thumbnails"),
+             "short_cuts": (prod.get(t["key"]) or {}).get("short_cuts"),
              "scores": dict(t["scores"], demand=t["demand"], timeliness=t.get("timeliness", 3),
                             taste=t.get("taste", 3), novelty=t.get("novelty", 3)),
              "flags": t.get("risk_flags", []), "packages": best or t["packages"][:2],
