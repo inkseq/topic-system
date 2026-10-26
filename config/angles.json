@@ -1,0 +1,10 @@
+[
+  {"id": "counter", "name": "Counter-intuitive", "pattern": "Everyone gets this wrong - here's what actually happens"},
+  {"id": "whatif", "name": "What-if", "pattern": "What would happen if ...?"},
+  {"id": "extreme", "name": "Extreme / record", "pattern": "The biggest / fastest / oldest / smallest ..."},
+  {"id": "hidden", "name": "Hidden reason", "pattern": "The hidden reason behind something familiar"},
+  {"id": "stakes", "name": "Stakes / countdown", "pattern": "You have N seconds/minutes - what do you do?"},
+  {"id": "livesit", "name": "Cast lives through it", "pattern": "One of our characters lives through the event or situation"},
+  {"id": "thennow", "name": "Then vs now", "pattern": "How it was vs how it is now"},
+  {"id": "mystery", "name": "Mystery to solve", "pattern": "A puzzle the viewer solves alongside the cast"}
+]

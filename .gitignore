@@ -1,0 +1,21 @@
+# Allowlist: ignore everything, then track only code, README and generic config templates.
+# All outputs and private inputs (shortlists, feedback, channel list, raw API/Reddit data) live in data/.
+*
+!*/
+/data/
+
+!/.gitignore
+!/README.md
+!/common.py
+!/demand.py
+!/angles.py
+!/shortlist.py
+!/run_weekly.py
+!/reweight.py
+!/retention.py
+!/config/settings.json
+!/config/angles.json
+!/config/cast.json
+!/config/seed_channels.example.csv
+!/config/feedback.example.csv
+!/config/manual_videos.example.csv

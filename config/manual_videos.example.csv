@@ -1,0 +1,3 @@
+channel,video_id,title,published,views,format
+# Paste rows here (one per upload, about 10+ per channel) when neither the API key nor the RSS feed is usable.
+# format = long or short. published = YYYY-MM-DD. Lines starting with # are ignored.

@@ -1,0 +1,52 @@
+{
+  "youtube": {
+    "service": "youtube",
+    "profile": "youtube--topic-system-20261027--v2"
+  },
+  "outlier": {
+    "lookback_days": 90,
+    "neighbours": 10,
+    "min_neighbours": 4,
+    "min_age_days": 3,
+    "min_score": 2.0,
+    "max_per_channel": 4
+  },
+  "wikipedia": {
+    "project": "en.wikipedia",
+    "top_n": 60
+  },
+  "reddit": {
+    "subreddits": [
+      "todayilearned",
+      "AskHistorians",
+      "explainlikeimfive",
+      "askscience",
+      "Damnthatsinteresting",
+      "AmItheAsshole",
+      "tifu"
+    ],
+    "per_subreddit": 15
+  },
+  "llm": {
+    "service": "openrouter",
+    "profile": "openrouter--rig-root",
+    "model": "anthropic/claude-sonnet-5.5",
+    "candidate_topics": 40,
+    "batch_size": 8,
+    "max_usd_per_run": 1.8
+  },
+  "weights": {
+    "demand": 0.25,
+    "packaging": 0.2,
+    "takeaway": 0.15,
+    "cast_fit": 0.15,
+    "fact_check": 0.1,
+    "policy_safety": 0.15
+  },
+  "shortlist": {
+    "size": 15,
+    "max_per_category": 4,
+    "min_policy_safety": 3
+  },
+  "user_agent": "inkseq-topic-research/0.1 (weekly research script; low volume)"
+}

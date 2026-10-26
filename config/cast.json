@@ -1,0 +1,14 @@
+{
+  "_note": "Role labels used in story outlines. Rename to the real cast names once they are fixed.",
+  "roles": {
+    "asker": "Curious asker - voices the viewer's question, reacts honestly",
+    "explainer": "Knowledgeable explainer - calm, precise, never preachy",
+    "messup": "Comic mess-up - tries the wrong idea first so the right one lands"
+  },
+  "constraints": [
+    "one speaker per shot",
+    "at most two characters on screen in any shot",
+    "the title's promise is paid off within the first 3 seconds",
+    "adult/general audience tone; not made for kids"
+  ]
+}
