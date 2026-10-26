@@ -106,5 +106,15 @@
     "unusual_per_section": 12,
     "rss_items": 12,
     "gutenberg_items": 25
+  },
+  "script": {
+    "max_usd": 3.0,
+    "words_per_minute": 150,
+    "target_minutes": [
+      3,
+      6
+    ],
+    "max_words_per_line": 12,
+    "min_wpm": 90
   }
 }

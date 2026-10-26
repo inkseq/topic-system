@@ -1,5 +1,6 @@
 """Weekly run: positioning -> demand signals -> 100+ ideas -> packaging -> data/shortlist/YYYY-Www.md,
-data/<week>/graph.json and the weekly memo (data/memos/YYYY-Www.md).
+data/<week>/graph.json, the weekly memo (data/memos/YYYY-Www.md) and the script for the memo's one main
+episode (data/scripts/<topic-id>.md/.json).
 
     python run_weekly.py              # this ISO week, LLM via the central registry
     python run_weekly.py --manual     # no LLM key: writes prompts to data/<week>/llm/, rerun after answering
@@ -12,6 +13,7 @@ import angles
 import demand
 import graph
 import memo
+import script
 import retention
 import shortlist
 from common import CONFIG, DATA, FEEDBACK, iso_week
@@ -30,4 +32,5 @@ if angles.build(week, mode) is None:
     sys.exit("Stopped before the shortlist: see the message above.")
 shortlist.build(week, mode)
 graph.build(week)
-memo.build(week, mode)
+if memo.build(week, mode):
+    script.build(week, mode)

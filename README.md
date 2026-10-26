@@ -28,7 +28,8 @@ angles.py     LLM: signals -> 120+ raw ideas (pillar, emotional pull, series) ->
 shortlist.py  weighted rank, pass/fail gates, category cap, near-duplicate rule, fresh slots, then a
               production plan for the 15 (3 thumbnail options, Shorts cuts, re-hooks), link check
 graph.py      data/<week>/graph.json for the private Idea Map page
-memo.py       weekly strategy memo + data/bets.json
+memo.py       weekly strategy memo + data/bets.json (picks the ONE main episode)
+script.py     the deliverable: full script for that episode + its Shorts cuts (draft -> script doctor -> lint)
 run_weekly.py everything in order
 reweight.py   learns new weights from data/feedback.csv once 20+ videos are published
 retention.py  purges raw third-party YouTube data after 30 days (runs at the start of every weekly run)
@@ -61,6 +62,7 @@ Everything private or generated lives in `data/`, which is never committed:
 | `data/positioning-options.md` | The positioning options for the owner to choose from. |
 | `data/<week>/graph.json` | Idea Map export. |
 | `data/memos/YYYY-Www.md`, `data/bets.json` | Weekly memos and each week's structured bet. |
+| `data/scripts/<topic-id>.md`, `.json` | The week's finished script (human-readable, and machine-readable for a later import into the story workbench). |
 
 Runs stay **local** (Windows Task Scheduler), not in GitHub Actions: Actions logs and artifacts on a public
 repo are public.
@@ -133,7 +135,7 @@ To remove it: `schtasks /Delete /TN "Topic shortlist" /F`.
 | YouTube Data API | Free. About 32 channels × 3–8 units, roughly 200 of the 10,000 free daily units. |
 | Wikipedia Pageviews and On-this-day, Reddit Atom feeds, Google Trends RSS | Free. No key needed. About 22 On-this-day requests plus about 40 pageview lookups, and 1 Trends request. |
 | Dense sources | Free. 3 Wikipedia pages, 2 RSS feeds and 1 Gutenberg page per run, each after a robots.txt check and a 1-second pause. |
-| LLM (Sonnet 5.5 via OpenRouter, USD 2 / 10 per M tokens in/out) | 1 ideas call (about 120 ideas), 4 packaging batches, 1 audience check, 1 production plan for the shortlist and 1 memo. Roughly 60k tokens in and 90k out, so **about USD 1.00**. There is a hard stop at `llm.max_usd_per_run` = USD 1.80, and answers are cached so reruns are free. |
+| LLM (Sonnet 5.5 via OpenRouter, USD 2 / 10 per M tokens in/out) | 1 ideas call (about 120 ideas), 4 packaging batches, 1 audience check, 1 production plan for the shortlist, 1 memo and 2 script passes. Roughly 90k tokens in and 110k out, so **about USD 1.30**; the script stage has its own cap of USD 3. There is a hard stop at `llm.max_usd_per_run` = USD 1.80, and answers are cached so reruns are free. |
 
 ## Favourites and dense sources
 
@@ -335,6 +337,76 @@ Shorts cuts. Any new fact in a re-hook or Shorts cut needs checking like the mai
 This week's bet is stored as structured data in `data/bets.json` (main move, hypothesis, metric, target,
 main episode with thumbnail options and Shorts cuts, bench, experiment, stop), so next week's memo can grade
 it.
+
+## Scripts (topic -> finished script)
+
+The script is the deliverable; the shortlist and memo feed it. Each week, `script.py` writes the full script
+for the memo's one main episode to `data/scripts/<topic-id>.md` and `.json`. It runs in two LLM passes:
+
+1. **S-draft** writes the script.
+2. Code lints the draft.
+3. **S-doctor** revises it against a checklist and the draft's lint report:
+   - cut about 20%;
+   - sharpen the hook;
+   - keep the cast's voices consistent with the positioning;
+   - no "and then" connectors;
+   - word count against the target (about 150 words a minute);
+   - read every line aloud;
+   - no model names, no health or finance advice, a respectful tone.
+4. Code lints it again.
+
+The run's script budget is `script.max_usd` (USD 3).
+
+**What a script contains, in order:**
+
+1. **Header:** title and the 3 thumbnail options, logline, one takeaway, pillar, core/casual/new, target length
+   (3–6 minutes), and each character's want in this episode.
+2. **Beat sheet** on Pixar's story spine ("Once upon a time… Every day… One day… Because of that… Until
+   finally…"), 5–8 beats. Every link between beats is written out as **BUT** or **THEREFORE** (the
+   Parker/Stone rule).
+3. **Misconception:** the asker or mess-up says the common wrong belief, and the explainer confronts it in
+   dialogue with a demonstration (Derek Muller's finding).
+4. **Retention map:**
+   - a 0–5 s cold open that pays off the thumbnail;
+   - an open question by 10 s;
+   - a re-hook at about each third;
+   - the payoff, then the end within 5 s;
+   - 2–3 Shorts ranges of 20–50 s each, with 9:16 framing notes.
+5. **Shot list:** 5-second windows, at most 2 characters on screen, one speaker per shot, the line starting at
+   least 1 s in, medium or close framing for dialogue, 12 words or fewer per line. These are the current
+   production limits, including avoiding 3-person dialogue shots.
+6. **Dialogue script** in screenplay form, for the voice pass.
+7. **Fact sheet** with a source and a checkbox for every claim.
+
+**Lint fails** on any of these:
+
+- an "and then" connector, or any connector other than BUT/THEREFORE;
+- fewer than 5 or more than 8 beats;
+- shot windows off the 5-second grid;
+- 3 or more characters on screen;
+- a speaker who isn't on screen;
+- an early line start, wrong framing, or too many words;
+- runtime outside 3–6 minutes;
+- dialogue that can't fit the cut;
+- no cold open, a late open question, or missing re-hooks;
+- more than 5 s between the payoff and the end;
+- bad Shorts ranges;
+- model names, clickbait wording, or advice-like wording.
+
+It warns on sparse dialogue (under 90 words a minute) and on unchecked facts.
+
+**Status:** draft → doctored → facts-verified → final. Code only sets `doctored`. A person moves it on: tick
+each fact (`"checked": true`) in the `.json`, then run:
+
+```bash
+python script.py --set-status facts-verified data/scripts/<topic-id>.json
+```
+
+and later `--set-status final`. Both refuse while lint has errors or any fact is unchecked. After hand edits,
+`python script.py --render <file>.json` rebuilds the `.md`.
+
+`config/example_script.json` and `.md` show the format. They are a made-up episode on Aesop's public-domain
+fable "The Crow and the Pitcher".
 
 ## Idea Map export
 

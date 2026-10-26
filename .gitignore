@@ -15,6 +15,7 @@
 !/retention.py
 !/graph.py
 !/memo.py
+!/script.py
 !/config/settings.json
 !/config/angles.json
 !/config/cast.json
@@ -23,3 +24,5 @@
 !/config/manual_videos.example.csv
 !/config/positioning.example.json
 !/config/favorites.example.md
+!/config/example_script.json
+!/config/example_script.md

@@ -1,0 +1,750 @@
+{
+ "example": true,
+ "note": "Made-up example episode built on Aesop's public-domain fable 'The Crow and the Pitcher'. Facts are listed but left unchecked on purpose.",
+ "topic_id": "example-crow-and-pitcher",
+ "week": "example",
+ "pillar": "weird-winners",
+ "status": "doctored",
+ "ccn": {
+  "core": {
+   "score": 4,
+   "reason": "fable turned true is our 'wrong first' sweet spot"
+  },
+  "casual": {
+   "score": 4,
+   "reason": "everyone knows the fable"
+  },
+  "new": {
+   "score": 4,
+   "reason": "bird + glass + stones reads instantly"
+  }
+ },
+ "title": "The crow in the old fable was real",
+ "thumbnail_options": [
+  {
+   "kind": "reaction",
+   "title": "A crow can solve this. Can you?",
+   "thumb_text": "CROW 1, HUMAN 0"
+  },
+  {
+   "kind": "object",
+   "title": "The bird trick from a 2,500-year-old story",
+   "thumb_text": "STONES RAISE WATER"
+  },
+  {
+   "kind": "contrast",
+   "title": "Sand vs stones: which raises the water?",
+   "thumb_text": "SAND OR STONES?"
+  }
+ ],
+ "logline": "When the mess-up can't reach his drink and calls Aesop's crow a fairy tale, the explainer shows the stone trick works - and that real rooks and crows pass the same test.",
+ "takeaway": "Dropping stones to raise water isn't just a fable: rooks and crows solve it in experiments, and they pick stones over sand.",
+ "target_minutes": 3,
+ "wants": {
+  "messup": "to finish his drink without listening to a moral",
+  "explainer": "to let the glass prove the point",
+  "asker": "to know if the old story is true"
+ },
+ "beats": [
+  {
+   "spine": "Once upon a time",
+   "text": "The mess-up thinks fables are made-up bedtime stories.",
+   "connector_to_next": "THEREFORE"
+  },
+  {
+   "spine": "Every day",
+   "text": "He skips the moral and goes straight for the snacks.",
+   "connector_to_next": "BUT"
+  },
+  {
+   "spine": "One day",
+   "text": "His straw can't reach the juice at the bottom of a tall glass.",
+   "connector_to_next": "THEREFORE"
+  },
+  {
+   "spine": "Because of that",
+   "text": "The explainer drops a pebble in, like Aesop's crow - and he scoffs.",
+   "connector_to_next": "BUT"
+  },
+  {
+   "spine": "Because of that",
+   "text": "His sand shortcut fails while the stones raise the water.",
+   "connector_to_next": "THEREFORE"
+  },
+  {
+   "spine": "Until finally",
+   "text": "She shows that real rooks and crows passed the same test - and he becomes a crow, slightly too well.",
+   "connector_to_next": null
+  }
+ ],
+ "misconception": {
+  "belief": "It's a fable - birds aren't that clever, and smaller stuff like sand would work better anyway.",
+  "voiced_by": "messup",
+  "confronted_by": "explainer",
+  "demonstration": "sand tube vs stones tube on the bench, then the rook experiment"
+ },
+ "retention": {
+  "cold_open": "The explainer drops a pebble into a tall glass and says a crow can solve this; the mess-up's straw can't reach.",
+  "open_question": {
+   "at_s": 8,
+   "line": "Prove it."
+  },
+  "rehooks": [
+   {
+    "at_s": 65,
+    "kind": "visual",
+    "beat": "the sand barely moves while the stones tube rises"
+   },
+   {
+    "at_s": 135,
+    "kind": "laugh",
+    "beat": "the mess-up 'becomes a crow' and overfills the glass"
+   }
+  ],
+  "payoff_s": 175,
+  "end_s": 180
+ },
+ "short_cuts": [
+  {
+   "id": "S1",
+   "start_s": 0,
+   "end_s": 30,
+   "title": "Is Aesop's crow real?",
+   "framing_9x16": "vertical close on the glass and straw, faces in the top third"
+  },
+  {
+   "id": "S2",
+   "start_s": 55,
+   "end_s": 95,
+   "title": "Sand vs stones",
+   "framing_9x16": "two tubes stacked vertically, mess-up's face reaction inset"
+  },
+  {
+   "id": "S3",
+   "start_s": 125,
+   "end_s": 150,
+   "title": "I'm basically a crow now",
+   "framing_9x16": "medium vertical on the mess-up and the overflowing glass"
+  }
+ ],
+ "shots": [
+  {
+   "n": 1,
+   "start_s": 0,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "explainer",
+    "messup"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "(dropping a pebble into a glass)",
+   "line": "A crow can solve this. You can't. Yet.",
+   "visual": "Explainer drops a pebble into a tall glass; mess-up's straw can't reach the juice",
+   "framing": "medium",
+   "sfx": "plink",
+   "short_cut": "S1"
+  },
+  {
+   "n": 2,
+   "start_s": 5,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "(sucking air)",
+   "line": "That's a fable. Birds aren't that clever. Prove it.",
+   "visual": "Mess-up's straw rattles at the empty top half",
+   "framing": "close",
+   "sfx": "slurp",
+   "short_cut": "S1"
+  },
+  {
+   "n": 3,
+   "start_s": 10,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "asker"
+   ],
+   "speaker": "asker",
+   "line_offset_s": 1.0,
+   "direction": "(opening notebook)",
+   "line": "Wait. The crow and the pitcher? That really happens?",
+   "visual": "Asker flips to a fresh page",
+   "framing": "medium-close",
+   "sfx": "page turn",
+   "short_cut": "S1"
+  },
+  {
+   "n": 4,
+   "start_s": 15,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "No. It's a bedtime story. Moral, nap, done.",
+   "visual": "Mess-up waves the straw dismissively",
+   "framing": "close",
+   "sfx": "",
+   "short_cut": "S1"
+  },
+  {
+   "n": 5,
+   "start_s": 20,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "explainer"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "Partly. The moral is made up. The trick isn't.",
+   "visual": "Explainer holds up a pebble",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": "S1"
+  },
+  {
+   "n": 6,
+   "start_s": 25,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [],
+   "speaker": null,
+   "line_offset_s": 0,
+   "direction": "",
+   "line": "",
+   "visual": "Illustrated page of the old fable: a crow dropping stones into a pitcher",
+   "framing": "wide",
+   "sfx": "old paper rustle",
+   "short_cut": "S1"
+  },
+  {
+   "n": 7,
+   "start_s": 30,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "asker",
+    "explainer"
+   ],
+   "speaker": "asker",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "So what's the trick? Drop stones until the water rises?",
+   "visual": "Asker peers into the glass",
+   "framing": "medium",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 8,
+   "start_s": 35,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "(grabbing a sponge)",
+   "line": "Easy. I'll just soak it up with this.",
+   "visual": "Mess-up plunges a sponge into the glass",
+   "framing": "close",
+   "sfx": "squelch",
+   "short_cut": null
+  },
+  {
+   "n": 9,
+   "start_s": 40,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "asker"
+   ],
+   "speaker": "asker",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "The sponge drank it. Now there's even less juice.",
+   "visual": "The sponge drinks the juice; the level drops further",
+   "framing": "medium-close",
+   "sfx": "sad trombone",
+   "short_cut": null
+  },
+  {
+   "n": 10,
+   "start_s": 45,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "explainer",
+    "messup"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "You picked the one thing that makes it worse.",
+   "visual": "Explainer takes the sponge away",
+   "framing": "medium",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 11,
+   "start_s": 50,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [],
+   "speaker": null,
+   "line_offset_s": 0,
+   "direction": "",
+   "line": "",
+   "visual": "Two tubes of water on a bench: one with sand ready, one with stones ready",
+   "framing": "wide",
+   "sfx": "bench lights click on",
+   "short_cut": null
+  },
+  {
+   "n": 12,
+   "start_s": 55,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "explainer"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "Stones push water up. Sand mostly just soaks it in.",
+   "visual": "Explainer points at the two tubes",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": "S2"
+  },
+  {
+   "n": 13,
+   "start_s": 60,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "(confident)",
+   "line": "Sand is smaller, so it works better. Obviously.",
+   "visual": "Mess-up pours sand into the first tube",
+   "framing": "close",
+   "sfx": "sand hiss",
+   "short_cut": "S2"
+  },
+  {
+   "n": 14,
+   "start_s": 65,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "(tapping the tube)",
+   "line": "Why isn't it moving? It's tiny! Tiny should be better!",
+   "visual": "The sand settles; the water barely moves",
+   "framing": "close",
+   "sfx": "",
+   "short_cut": "S2"
+  },
+  {
+   "n": 15,
+   "start_s": 70,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "asker"
+   ],
+   "speaker": "asker",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "It barely moved. The stones one is already rising.",
+   "visual": "Asker points at the second tube",
+   "framing": "medium",
+   "sfx": "",
+   "short_cut": "S2"
+  },
+  {
+   "n": 16,
+   "start_s": 75,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "(sulking)",
+   "line": "Fine. But a real bird wouldn't know that.",
+   "visual": "Mess-up folds his arms",
+   "framing": "close",
+   "sfx": "",
+   "short_cut": "S2"
+  },
+  {
+   "n": 17,
+   "start_s": 80,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "explainer"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "In 2009, scientists asked some rooks exactly that.",
+   "visual": "Explainer pulls up a tablet",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": "S2"
+  },
+  {
+   "n": 18,
+   "start_s": 85,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "explainer"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "Each rook got a tube, a floating worm, and stones.",
+   "visual": "Illustration of a rook beside a tube of water with a floating worm and a pile of stones",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": "S2"
+  },
+  {
+   "n": 19,
+   "start_s": 90,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "explainer"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "The worm floated too low to reach. So they dropped stones.",
+   "visual": "Rook drops a stone; the worm rises",
+   "framing": "medium-close",
+   "sfx": "plink, plink",
+   "short_cut": "S2"
+  },
+  {
+   "n": 20,
+   "start_s": 95,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "asker"
+   ],
+   "speaker": "asker",
+   "line_offset_s": 1.0,
+   "direction": "(writing fast)",
+   "line": "They used stones until they could reach the worm?",
+   "visual": "Asker scribbling",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 21,
+   "start_s": 100,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "explainer"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "And they picked big stones over small ones.",
+   "visual": "Big stone vs small stone side by side",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 22,
+   "start_s": 105,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "(whispering)",
+   "line": "Smarter than me with the sand.",
+   "visual": "Mess-up stares at his sand tube",
+   "framing": "close",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 23,
+   "start_s": 110,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "asker"
+   ],
+   "speaker": "asker",
+   "line_offset_s": 1.0,
+   "direction": "(grinning)",
+   "line": "Write that down: a bird beat you at physics.",
+   "visual": "Asker underlines something twice",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 24,
+   "start_s": 115,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "asker",
+    "messup"
+   ],
+   "speaker": "asker",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "Do crows do it too, or just rooks?",
+   "visual": "Asker taps her pen",
+   "framing": "medium",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 25,
+   "start_s": 120,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "explainer"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "Crows do too. Researchers watched them pass the same test.",
+   "visual": "Illustration of a crow at a water tube",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 26,
+   "start_s": 125,
+   "scene": "INT. WORKSHOP - DEMO BENCH",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "(grabbing pebbles)",
+   "line": "Right. My turn. Pebbles. Big ones. Watch this.",
+   "visual": "Mess-up gathers a fistful of pebbles",
+   "framing": "close",
+   "sfx": "",
+   "short_cut": "S3"
+  },
+  {
+   "n": 27,
+   "start_s": 130,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [],
+   "speaker": null,
+   "line_offset_s": 0,
+   "direction": "",
+   "line": "",
+   "visual": "Back at the tall glass: mess-up drops pebbles one by one; the juice climbs",
+   "framing": "close",
+   "sfx": "plink plink plink",
+   "short_cut": "S3"
+  },
+  {
+   "n": 28,
+   "start_s": 135,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "(triumphant)",
+   "line": "It's rising! I'm basically a crow now!",
+   "visual": "Mess-up flaps his elbows",
+   "framing": "medium",
+   "sfx": "",
+   "short_cut": "S3"
+  },
+  {
+   "n": 29,
+   "start_s": 140,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "explainer",
+    "messup"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "Partly. The crow didn't overfill the glass.",
+   "visual": "Juice starts spilling over the rim",
+   "framing": "medium",
+   "sfx": "drip",
+   "short_cut": "S3"
+  },
+  {
+   "n": 30,
+   "start_s": 145,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [],
+   "speaker": null,
+   "line_offset_s": 0,
+   "direction": "",
+   "line": "",
+   "visual": "The glass overflows onto the table",
+   "framing": "close",
+   "sfx": "splash",
+   "short_cut": "S3"
+  },
+  {
+   "n": 31,
+   "start_s": 150,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "asker"
+   ],
+   "speaker": "asker",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "So the fable was right about the trick, not the bird?",
+   "visual": "Asker wipes the table, notebook safe",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 32,
+   "start_s": 155,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "explainer"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "It was right about both. Some birds really do this.",
+   "visual": "Explainer smiles",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 33,
+   "start_s": 160,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "Then why did I think fables were all made up?",
+   "visual": "Mess-up drinks at last",
+   "framing": "close",
+   "sfx": "slurp",
+   "short_cut": null
+  },
+  {
+   "n": 34,
+   "start_s": 165,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "explainer"
+   ],
+   "speaker": "explainer",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "Some morals are made up. Some observations are older than science.",
+   "visual": "Explainer pockets a pebble",
+   "framing": "medium-close",
+   "sfx": "",
+   "short_cut": null
+  },
+  {
+   "n": 35,
+   "start_s": 170,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "asker",
+    "messup"
+   ],
+   "speaker": "asker",
+   "line_offset_s": 1.0,
+   "direction": "(writing)",
+   "line": "Things you were wrong about: crows, sand, and juice.",
+   "visual": "Asker writes; mess-up peers over her shoulder",
+   "framing": "medium",
+   "sfx": "pen scratch",
+   "short_cut": null
+  },
+  {
+   "n": 36,
+   "start_s": 175,
+   "scene": "INT. WORKSHOP KITCHEN - AFTERNOON",
+   "on_screen": [
+    "messup"
+   ],
+   "speaker": "messup",
+   "line_offset_s": 1.0,
+   "direction": "",
+   "line": "Partly wrong.",
+   "visual": "Mess-up's smug grin; cut to black",
+   "framing": "close",
+   "sfx": "button sting",
+   "short_cut": null
+  }
+ ],
+ "facts": [
+  {
+   "claim": "'The Crow and the Pitcher' is one of Aesop's fables and is in the public domain.",
+   "source": "Wikipedia: The Crow and the Pitcher",
+   "url": "https://en.wikipedia.org/wiki/The_Crow_and_the_Pitcher",
+   "checked": false
+  },
+  {
+   "claim": "In 2009, rooks dropped stones into a tube to raise the water and reach a floating worm (Bird & Emery).",
+   "source": "Bird & Emery 2009, Current Biology",
+   "url": "https://doi.org/10.1016/j.cub.2009.07.033",
+   "checked": false
+  },
+  {
+   "claim": "The rooks preferred larger stones over smaller ones.",
+   "source": "Bird & Emery 2009, Current Biology",
+   "url": "https://doi.org/10.1016/j.cub.2009.07.033",
+   "checked": false
+  },
+  {
+   "claim": "New Caledonian crows have also passed water-displacement tasks.",
+   "source": "Wikipedia: The Crow and the Pitcher (scientific research)",
+   "url": "https://en.wikipedia.org/wiki/The_Crow_and_the_Pitcher",
+   "checked": false
+  }
+ ],
+ "doctor_notes": [
+  "Example only: written to show the format; not produced from a real run."
+ ],
+ "lint": {
+  "errors": [],
+  "warnings": [
+   "4 fact(s) unchecked - status can't pass 'doctored'"
+  ],
+  "stats": {
+   "shots": 36,
+   "runtime_s": 180,
+   "spoken_words": 278,
+   "wpm": 93,
+   "spoken_minutes_at_wpm": 1.85,
+   "facts": 4,
+   "facts_unchecked": 4
+  }
+ }
+}
