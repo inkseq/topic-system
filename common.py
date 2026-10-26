@@ -34,8 +34,17 @@ def save_json(path, obj):
         json.dump(obj, f, ensure_ascii=False, indent=2)
 
 
+def _merge(base, over):
+    for k, v in over.items():
+        base[k] = _merge(base.get(k, {}), v) if isinstance(v, dict) and isinstance(base.get(k), dict) else v
+    return base
+
+
 def settings():
-    return load_json(CONFIG / "settings.json")
+    """config/settings.json, overridden by the private data/settings.local.json when present."""
+    cfg = load_json(CONFIG / "settings.json")
+    local = DATA / "settings.local.json"
+    return _merge(cfg, load_json(local)) if local.exists() else cfg
 
 
 def private_file(name, example):

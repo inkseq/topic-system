@@ -48,5 +48,8 @@
     "max_per_category": 4,
     "min_policy_safety": 3
   },
-  "user_agent": "inkseq-topic-research/0.1 (weekly research script; low volume)"
+  "user_agent": "inkseq-topic-research/0.1 (weekly research script; low volume)",
+  "retention": {
+    "purge_after_days": 30
+  }
 }

@@ -36,6 +36,7 @@ Everything private or generated lives in `data/`, which is never committed:
 | `data/<week>/topics.json`, `shortlist.json` | Scored topics. |
 | `data/shortlist/YYYY-Www.md` | The weekly shortlist. |
 | `data/weights.learned.json` | Weights learned from feedback. |
+| `data/settings.local.json` | Optional private overrides, merged over `config/settings.json`. |
 
 Runs stay **local** (Windows Task Scheduler), not in GitHub Actions: Actions logs and artifacts on a public
 repo are public.
@@ -79,7 +80,7 @@ These rules come from the YouTube API Services Developer Policies
   - No scraping of YouTube pages, RSS feeds or the site.
   - Channel IDs come from `channels.list?forHandle=`, and statistics come from `videos.list`.
 - **30-day limit on other channels' statistics (III.E.4.b/d).**
-  - `retention.py` runs before every weekly run.
+  - `retention.py` runs before every weekly run, using `retention.purge_after_days` (default 30).
   - After 30 days it deletes `data/<week>/signals.json` and the `llm/` prompts, strips the evidence from `topics.json`, and replaces the "Demand evidence" lines in the shortlist.
   - What stays is our own notes: topic, takeaway, angles, outline, facts, our 1-5 scores and the decision.
   - Clear any hand-pasted `data/manual_videos.csv` rows on the same schedule.
