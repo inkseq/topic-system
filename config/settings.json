@@ -42,23 +42,25 @@
     "service": "openrouter",
     "profile": "openrouter--rig-root",
     "model": "anthropic/claude-sonnet-5.5",
-    "candidate_topics": 40,
     "batch_size": 8,
-    "max_usd_per_run": 1.8
+    "max_usd_per_run": 1.8,
+    "raw_ideas": 120,
+    "package_top": 30
   },
   "weights": {
     "demand": 0.25,
+    "emotional_pull": 0.25,
     "packaging": 0.2,
-    "takeaway": 0.15,
-    "cast_fit": 0.15,
-    "fact_check": 0.1,
-    "policy_safety": 0.15,
+    "takeaway": 0.1,
+    "cast_fit": 0.1,
     "timeliness": 0.1
   },
   "shortlist": {
     "size": 15,
     "max_per_category": 4,
-    "min_policy_safety": 3
+    "min_policy_safety": 3,
+    "min_fact_check": 3,
+    "series_bonus": 0.1
   },
   "user_agent": "inkseq-topic-research/0.1 (weekly research script; low volume)",
   "retention": {
@@ -70,5 +72,15 @@
     "reddit": 0.8,
     "anniversary": 1.0,
     "google_trends": 0.9
+  },
+  "preselect": {
+    "w_demand": 0.4,
+    "w_pull": 0.6,
+    "series_bonus": 0.2,
+    "timely_bonus": 0.2,
+    "max_per_category": 6
+  },
+  "calibration": {
+    "max_share_of_fives": 0.2
   }
 }

@@ -1,6 +1,7 @@
 handle,category,why
-kurzgesagt,science-explainer,animated science; recurring bird characters
-TEDEd,science-explainer,animated lessons and riddles
-LifeNoggin,science-explainer,recurring character (Blocko) explains what-ifs
-OverSimplified,history,comic history with recurring gags
-DharMann,moral-story,recurring cast; moral-of-the-story format
+kurzgesagt,explainer,animated science; recurring bird characters
+LifeNoggin,what-if,recurring character (Blocko) what-ifs
+LEMMiNO,mystery,documentary mysteries
+MarkRober,stakes,engineering heists and challenges
+OverSimplified,history-story,comic history with recurring gags
+JaidenAnimations,character-animation,recurring character storytime

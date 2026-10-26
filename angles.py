@@ -9,7 +9,7 @@ import sys
 import urllib.error
 import urllib.request
 
-from common import CONFIG, iso_week, load_central_api, load_json, run_dir, save_json, settings
+from common import CONFIG, iso_week, load_central_api, load_json, positioning, run_dir, save_json, settings
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -118,35 +118,62 @@ no tragedy-chasing, politics, elections, celebrity gossip, adult content, or rea
 no health, finance or legal advice delivered by a character (explaining how something works is fine)."""
 
 
-def candidate_topics(signals, llm):
+def positioning_text(pos):
+    pillars = "\n".join(f"- {p['id']}: {p['name']} | in: {', '.join(p['in'])} | out: {', '.join(p['out'])}"
+                        for p in pos["pillars"])
+    cast = "\n".join(f"- {c['role']}: {c['personality']}; wants {c['wants']}; running gags: "
+                     f"{', '.join(c['running_gags']) or '-'}" for c in pos["cast"])
+    return f"""CHANNEL POSITIONING ({pos['status']}): "{pos['name']}"
+Audience: {pos['audience']['who']} ({pos['audience']['age_band']}); they want to feel {', '.join(pos['audience']['wants_to_feel'])}.
+Promise: {pos['promise']}
+Pillars (every idea must belong to exactly one):
+{pillars}
+Cast:
+{cast}
+Relationships: {pos['relationships']}
+Tone rules: {'; '.join(pos['tone_rules'])}
+No-go: {'; '.join(pos['no_go'])}
+Possible series: {', '.join(pos.get('series', [])) or '-'}"""
+
+
+def system_prompt(pos):
+    return CHANNEL_BRIEF + "\n\n" + positioning_text(pos)
+
+
+# ---------- step A: signals -> 100+ raw ideas (packaging-first: many ideas per winner) ----------
+
+def raw_ideas(signals, llm, pos):
     lines, index = signal_lines(signals)
-    n = llm.cfg["candidate_topics"]
+    n = llm.cfg["raw_ideas"]
     user = f"""Below are this week's demand signals: YouTube videos that beat their own channel's median
-(outlier multiple shown), yesterday's most-read English Wikipedia articles, top-of-day Reddit posts from
-learning/story subreddits, round-number anniversaries 3-6 weeks ahead (A), and US Google daily search trends (G).
+(outlier multiple shown), yesterday's most-read English Wikipedia articles, top-of-day Reddit posts,
+round-number anniversaries 3-6 weeks ahead (A), and US Google daily search trends (G).
 Most signals are noise for us (elections, sport, films, gossip, channel promos).
 
-Propose {n} distinct candidate topics for our channel. Rules:
-- Each topic must teach one concrete, verifiable thing or leave a warm feeling, and be actable by our cast.
-- Prefer topics backed by signals; cite the signal ids that show demand for the underlying curiosity.
-  Do not copy another creator's video - find our own angle on the same curiosity.
-- At most 8 topics may have no signal (evergreen ideas you are confident have broad demand).
-- Reddit posts are research only: use the general theme, never re-tell a specific person's post.
-- Anniversaries (A): use only discoveries, inventions, firsts, buildings, culture and science; never a war,
-  battle, disaster, death, crime, scandal or politician as the hook. The episode publishes on the anniversary.
-- Google trends (G): only when the trend points at an evergreen "why/how" question our cast can explain.
-  Skip celebrities, news events, sports results and anything that needs a real person's likeness.
-- Spread across categories (science, history, human behaviour, engineering, nature, everyday life, language,
-  space); no more than 8 per category.
+Brainstorm {n} raw episode ideas. Quantity first: strong channels write about 100 ideas per winner, so
+include bold and odd ones. Rules:
+- Each idea belongs to exactly one pillar id from the positioning; drop anything that fits none.
+- Conflict first: someone in the cast wants something, something goes wrong, and the true fact is the
+  payoff - not the premise. Write that arc in "hook" in one line.
+- Prefer surprise, stakes, awe and humour. Plain textbook trivia ("how X works") needs a twist or it's out.
+- Prefer ideas backed by signals and cite their ids. Do not copy another creator's video - find our own
+  angle on the same curiosity. At most a quarter of the ideas may have no signal.
+- Reddit posts are research only: use the theme, never re-tell a specific person's post.
+- Anniversaries (A): only discoveries, inventions, firsts, buildings, culture and science; never a war,
+  battle, disaster, death, crime, scandal or politician as the hook. The episode publishes on the date.
+- Google trends (G): only when the trend points at an evergreen "why/how" question our cast can act out.
+  Skip celebrities, news events, sports results and anything needing a real person's likeness.
+- emotional_pull 1-5 (surprise, stakes, awe, humour). Calibrate: at most 1 idea in 5 gets a 5; 3 is average.
+- series: true when the idea could be a recurring format (one of the possible series or a new one).
 
-Return JSON only: {{"topics": [{{"key": "kebab-slug", "topic": "short working title", "takeaway": "the one
-thing the viewer learns or feels, one sentence", "category": "...", "signal_ids": ["Y03", "W12"],
-"why_demand": "one line"}}]}}
+Return JSON only: {{"ideas": [{{"key": "kebab-slug", "idea": "working title", "hook": "who wants what ->
+what goes wrong -> the fact that pays it off", "takeaway": "one sentence", "pillar": "<pillar id>",
+"category": "...", "signal_ids": ["Y03"], "emotional_pull": 3, "series": false, "why_demand": "one line"}}]}}
 
 SIGNALS
 """ + "\n".join(lines)
-    out = llm.chat("A-topics", CHANNEL_BRIEF, user, max_tokens=9000, est_usd=0.15)
-    return out["topics"], index
+    out = llm.chat("A-ideas", system_prompt(pos), user, max_tokens=24000, est_usd=0.30)
+    return out["ideas"], index
 
 
 # ---------- demand score (deterministic, from linked signals) ----------
@@ -189,39 +216,57 @@ def timeliness(evidence, cfg):
     return 3, None, None
 
 
-# ---------- step B: packaging, outline, facts, scores ----------
+def preselect(ideas, cfg):
+    """Keep the best `package_top` in-pillar ideas by demand and emotional pull, with a per-category cap."""
+    p = cfg["preselect"]
+    ranked = sorted(ideas, key=lambda t: -(p["w_demand"] * t["demand"] + p["w_pull"] * t.get("emotional_pull", 3)
+                                           + (p["series_bonus"] if t.get("series") else 0)
+                                           + (p["timely_bonus"] if t["timeliness"] >= 4 else 0)))
+    keep, per_cat = [], {}
+    for t in ranked:
+        if per_cat.get(t["category"], 0) >= p["max_per_category"]:
+            continue
+        keep.append(t)
+        per_cat[t["category"]] = per_cat.get(t["category"], 0) + 1
+        if len(keep) >= cfg["llm"]["package_top"]:
+            break
+    return keep
 
-RUBRIC = """Score each 1-5 (5 = best):
+
+# ---------- step B: packaging, conflict outline, facts, scores ----------
+
+RUBRIC = """Score 1-5. Calibrate: across the whole run a 5 is rare (at most 1 topic in 5 per dimension) and 3 is a
+solid average - use the full range, or the scores can't separate topics.
+- emotional_pull: surprise, stakes, awe or humour the viewer feels (5 = they'd send it to a friend)
 - packaging: would a curious adult click, and is it fully accurate? (5 = irresistible and true)
-- takeaway: is there exactly one clear thing learned or felt? (5 = one crisp sentence a viewer could repeat)
-- cast_fit: can asker/explainer/mess-up act it out with one speaker per shot and at most two characters on
-  screen, without crowds, real people's likeness or effects our animation can't sell? (5 = natural fit)
-- fact_check: can every key claim be checked against reputable public sources in under 30 minutes? (5 = easy)
-- policy_safety: risk under YouTube's July 2026 inauthentic-content rules (repetitive templated AI video,
-  emotionally manipulative clips, synthetic personas giving health/finance advice) and made-for-kids drift.
-  5 = evergreen, informational, original story, adult framing; 3 = touches health/money/current events but
-  only explains; 1 = advice from a character, distress/fear hook, real private people, or kid-targeted."""
+- takeaway: is there one clear thing learned or felt? (5 = one crisp sentence a viewer could repeat)
+- cast_fit: can the cast act it with one speaker per shot and at most two characters on screen, without
+  crowds, real people's likeness or effects our animation can't sell?
+Gates (pass at 3 or more; give the reason for any score below 3 in gate_flags):
+- fact_check: can every key claim be checked against reputable public sources in under 30 minutes?
+- policy_safety: YouTube's July 2026 inauthentic-content rules (repetitive templated AI video, emotionally
+  manipulative clips, synthetic personas giving health/finance advice), made-for-kids drift, no-go list."""
 
 
-def package_batch(name, topics, llm, angles, cast):
+def package_batch(name, topics, llm, angles, cast, pos):
     angle_text = "\n".join(f"- {a['id']}: {a['name']} - {a['pattern']}" for a in angles)
-    roles = "\n".join(f"- {k}: {v}" for k, v in cast["roles"].items())
-    items = "\n".join(f"- key={t['key']} | {t['topic']} | takeaway: {t['takeaway']}" for t in topics)
-    user = f"""For each topic below produce packaging, a story outline, facts to verify and scores.
+    items = "\n".join(f"- key={t['key']} | pillar={t['pillar']} | {t['idea']} | arc: {t.get('hook', '')} | "
+                      f"takeaway: {t['takeaway']}" for t in topics)
+    user = f"""For each topic below produce packaging, a conflict-first story outline, facts to verify and scores.
 
-ANGLE LIBRARY (use 5 different angles per topic, pick the 5 that fit best)
+ANGLE LIBRARY (use 5 different angles per topic; favour stakes, what-if and counter when they fit)
 {angle_text}
 
-CAST ROLES
-{roles}
 Constraints: {"; ".join(cast["constraints"])}.
 
 PACKAGING RULES: title <= 60 characters, sentence case, no clickbait words ("insane", "shocking", "you won't
 believe"), no fake urgency or fear. thumb_text <= 5 words. first_3s says exactly how the opening 3 seconds
 pay off the title. The two strongest packages go in "best" (0-based indices).
 
-OUTLINE: exactly 3 beats (hook, turn, payoff). Each beat has 1-3 shots; each shot has one speaker and
-on_screen with at most two roles; the speaker must be on screen.
+CONFLICT: every story needs one. "conflict" names who wants what, what goes wrong, and the true fact that pays
+it off. The fact is the payoff, not the premise.
+OUTLINE: exactly 3 beats - "want", "trouble", "payoff". Each beat has 1-3 shots; each shot has one speaker and
+on_screen with at most two roles; the speaker must be on screen. Use the cast's personalities and gags.
 
 FACTS: the 3-5 claims the episode depends on, each with the best reputable public source you know
 (name + URL; prefer the specific Wikipedia article, a university, a government or museum page).
@@ -229,18 +274,20 @@ FACTS: the 3-5 claims the episode depends on, each with the best reputable publi
 {RUBRIC}
 
 RISK FLAGS: short strings, e.g. "health-adjacent", "current-event", "made-for-kids drift",
-"real-person likeness", "repetitive-format risk", "contested facts". Empty list if none.
+"real-person likeness", "contested facts". Empty list if none.
 
 Return JSON only: {{"topics": [{{"key": "...", "packages": [{{"angle": "<angle id>", "title": "...",
-"thumb_text": "...", "thumb_visual": "...", "first_3s": "..."}}], "best": [0, 1], "outline": [{{"beat":
-"hook", "shots": [{{"speaker": "asker", "on_screen": ["asker", "explainer"], "action": "..."}}]}}],
-"facts": [{{"claim": "...", "source": "...", "url": "..."}}], "scores": {{"packaging": 4, "takeaway": 4,
-"cast_fit": 4, "fact_check": 4, "policy_safety": 5}}, "score_note": "one line", "risk_flags": []}}]}}
+"thumb_text": "...", "thumb_visual": "...", "first_3s": "..."}}], "best": [0, 1], "conflict": {{"who":
+"messup", "wants": "...", "goes_wrong": "...", "payoff_fact": "..."}}, "outline": [{{"beat": "want",
+"shots": [{{"speaker": "messup", "on_screen": ["messup", "asker"], "action": "..."}}]}}], "facts": [{{"claim":
+"...", "source": "...", "url": "..."}}], "scores": {{"emotional_pull": 3, "packaging": 3, "takeaway": 3,
+"cast_fit": 3, "fact_check": 4, "policy_safety": 4}}, "gate_flags": [], "score_note": "one line",
+"risk_flags": []}}]}}
 
 TOPICS
 {items}"""
     est = 0.03 + 0.02 * len(topics)
-    return llm.chat(name, CHANNEL_BRIEF, user, max_tokens=2600 * len(topics) + 1000, est_usd=est)["topics"]
+    return llm.chat(name, system_prompt(pos), user, max_tokens=2800 * len(topics) + 1000, est_usd=est)["topics"]
 
 
 def validate(t, cast):
@@ -251,6 +298,11 @@ def validate(t, cast):
             problems.append(f"thumb text over 5 words: {p['thumb_text']}")
         if len(p.get("title", "")) > 70:
             problems.append(f"title long ({len(p['title'])} chars)")
+    c = t.get("conflict") or {}
+    if not all(c.get(k) for k in ("who", "wants", "goes_wrong", "payoff_fact")):
+        problems.append("conflict incomplete")
+    if [b.get("beat") for b in t.get("outline", [])] != ["want", "trouble", "payoff"]:
+        problems.append("outline beats are not want/trouble/payoff")
     for beat in t.get("outline", []):
         for s in beat.get("shots", []):
             if len(s.get("on_screen", [])) > 2:
@@ -262,17 +314,39 @@ def validate(t, cast):
     return problems
 
 
+CALIBRATED = ["demand", "emotional_pull", "packaging", "takeaway", "cast_fit"]
+
+
+def calibrate(topics, cap):
+    """At most `cap` of topics keep a 5 on any dimension; the rest of the 5s become 4 (ties broken by the other scores)."""
+    n = len(topics)
+    allowed = max(1, int(cap * n))
+    for dim in CALIBRATED:
+        fives = [t for t in topics if (t["demand"] if dim == "demand" else t["scores"].get(dim)) == 5]
+        if len(fives) <= allowed:
+            continue
+        fives.sort(key=lambda t: -(sum(v for k, v in t["scores"].items() if k in CALIBRATED and k != dim)
+                                   + (t["demand"] if dim != "demand" else 0)))
+        for t in fives[allowed:]:
+            if dim == "demand":
+                t["demand"] = 4
+            else:
+                t["scores"][dim] = 4
+            t.setdefault("calibrated", []).append(dim)
+
+
 def build(week=None, mode="api"):
     cfg = settings()
     week = week or iso_week()
     rd = run_dir(week)
     signals = load_json(rd / "signals.json")
     llm = LLM(cfg["llm"], rd, mode)
-    angles, cast = load_json(CONFIG / "angles.json"), load_json(CONFIG / "cast.json")
+    angles, cast, pos = load_json(CONFIG / "angles.json"), load_json(CONFIG / "cast.json"), positioning()
+    pillar_ids = {p["id"] for p in pos["pillars"]}
 
-    print(f"[angles] candidate topics ({mode}) ...")
+    print(f"[angles] raw ideas ({mode}, positioning '{pos['name']}' {pos['status']}) ...")
     try:
-        topics, index = candidate_topics(signals, llm)
+        ideas, index = raw_ideas(signals, llm, pos)
     except ManualPending as p:
         print(f"  waiting for {llm.dir / (str(p) + '.response.json')} - answer the .prompt.md next to it, then rerun")
         return None
@@ -280,26 +354,31 @@ def build(week=None, mode="api"):
         print(f"  stopped: {e}")
         return None
     seen = set()
-    for t in topics:
-        base = re.sub(r"[^a-z0-9-]+", "-", t["key"].lower()).strip("-")[:48] or "topic"
+    for t in ideas:
+        base = re.sub(r"[^a-z0-9-]+", "-", t["key"].lower()).strip("-")[:48] or "idea"
         k, n = base, 2
         while k in seen:
             k, n = f"{base}-{n}", n + 1
         seen.add(k)
-        t["key"] = k
+        t["key"], t["topic"] = k, t["idea"]
         t["demand"] = demand_score(t.get("signal_ids", []), index, cfg.get("demand_source_weights"))
         t["evidence"] = [index[s] for s in t.get("signal_ids", []) if s in index]
         t["timeliness"], t["publish_by"], t["time_reason"] = timeliness(t["evidence"], cfg)
+        t["in_pillar"] = t.get("pillar") in pillar_ids  # positioning_fit gate
+    fit = [t for t in ideas if t["in_pillar"]]
+    topics = preselect(fit, cfg)
+    for t in ideas:
+        t["packaged"] = t in topics
+    print(f"  {len(ideas)} ideas, {len(fit)} in a pillar, packaging the top {len(topics)}")
 
-    print(f"[angles] packaging {len(topics)} topics ...")
     by_key = {t["key"]: t for t in topics}
     bs = llm.cfg["batch_size"]
-    batches = [(f"B{i // bs + 1}", topics[i:i + bs]) for i in range(0, len(topics), bs)]
+    batches = [(f"P{i // bs + 1}", topics[i:i + bs]) for i in range(0, len(topics), bs)]
     retried, pending = False, []
     while batches:
         name, batch = batches.pop(0)
         try:
-            results = package_batch(name, batch, llm, angles, cast)
+            results = package_batch(name, batch, llm, angles, cast, pos)
         except ManualPending:
             pending.append(name)
             continue
@@ -311,18 +390,26 @@ def build(week=None, mode="api"):
         for r in results:
             t = by_key.get(r.get("key"))
             if t:
-                t.update({k: r.get(k) for k in ("packages", "best", "outline", "facts", "scores", "score_note",
-                                                 "risk_flags")})
+                t.update({k: r.get(k) for k in ("packages", "best", "conflict", "outline", "facts", "scores",
+                                                 "gate_flags", "score_note", "risk_flags")})
+                t["raw_scores"] = dict(t["scores"] or {})
                 t["format_problems"] = validate(t, cast)
         if not batches and not retried and not pending:  # one retry pass for topics a batch dropped
             retried = True
             missing = [t for t in topics if not t.get("scores")]
-            batches = [(f"R{i // bs + 1}", missing[i:i + bs]) for i in range(0, len(missing), bs)]
+            batches = [(f"PR{i // bs + 1}", missing[i:i + bs]) for i in range(0, len(missing), bs)]
     if pending:
         print(f"  waiting for answers to {', '.join(pending)} in {llm.dir}; rerun when they are in place")
+    else:
+        calibrate([t for t in topics if t.get("scores")], cfg["calibration"]["max_share_of_fives"])
     save_json(rd / "topics.json", {"week": week, "llm_mode": mode, "llm_model": llm.cfg["model"] if mode == "api" else "manual",
                                    "llm_cost_usd": round(llm.spent, 4), "llm_calls": llm.calls,
-                                   "pending": pending, "topics": topics})
+                                   "positioning": {"name": pos["name"], "status": pos["status"]},
+                                   "pending": pending, "ideas_total": len(ideas), "ideas_in_pillar": len(fit),
+                                   "ideas": [{k: t.get(k) for k in ("key", "idea", "hook", "pillar", "category",
+                                              "emotional_pull", "series", "demand", "in_pillar", "packaged")}
+                                             for t in ideas],
+                                   "topics": topics})
     print(f"[angles] done, LLM spend ${llm.spent:.3f}")
     return None if pending else topics
 

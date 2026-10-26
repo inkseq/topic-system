@@ -56,6 +56,11 @@ def private_file(name, example):
     return CONFIG / example
 
 
+def positioning():
+    """Channel positioning (private data/positioning.json; template in config/). Every later step reads it."""
+    return load_json(private_file("positioning.json", "positioning.example.json"))
+
+
 def iso_week(day=None):
     day = day or dt.date.today()
     y, w, _ = day.isocalendar()

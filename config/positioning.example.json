@@ -1,0 +1,28 @@
+{
+  "status": "provisional",
+  "option": 1,
+  "name": "Example channel",
+  "audience": {
+    "who": "Curious adults who watch short explainer and story channels",
+    "age_band": "18-45",
+    "markets": ["US"],
+    "wants_to_feel": ["surprised", "amused"]
+  },
+  "promise": "One short story, one thing you'll remember.",
+  "platforms": {"primary": "YouTube (English)", "cross_post": ["TikTok", "Instagram Reels"]},
+  "pillars": [
+    {"id": "everyday-mysteries", "name": "Everyday mysteries", "in": ["hidden reason behind familiar things"], "out": ["health advice"]},
+    {"id": "weird-winners", "name": "Nature's weird winners", "in": ["surprising animal strategies"], "out": ["graphic predation"]},
+    {"id": "odd-history", "name": "Odd history", "in": ["strange laws and inventions"], "out": ["wars as the hook"]}
+  ],
+  "cast": [
+    {"role": "asker", "personality": "earnest", "wants": "to understand", "running_gags": []},
+    {"role": "explainer", "personality": "calm", "wants": "others to work it out", "running_gags": []},
+    {"role": "messup", "personality": "confident and wrong first", "wants": "shortcuts", "running_gags": []}
+  ],
+  "relationships": "Friends who share a workshop.",
+  "tone_rules": ["conflict first, fact as the payoff", "pay off the title in the first 3 seconds"],
+  "no_go": ["health, finance or legal advice from a character", "tragedies as the hook", "made-for-kids framing"],
+  "series": [],
+  "first_20": []
+}

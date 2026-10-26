@@ -2,16 +2,30 @@
 
 A small weekly pipeline that picks episode topics for a channel where one fixed cast (curious asker,
 knowledgeable explainer, comic mess-up) acts out a different short story each week, so viewers either learn
-one thing or come away feeling good. Each run writes `data/shortlist/YYYY-Www.md` with the top 15 topics.
+one thing or come away feeling good.
+
+Each run does the following, in order:
+
+1. Reads the channel positioning.
+2. Collects demand signals.
+3. Brainstorms more than 100 raw ideas.
+4. Packages the best 30.
+5. Writes these outputs:
+   - `data/shortlist/YYYY-Www.md` with the top 15;
+   - `data/<week>/graph.json` for the Idea Map;
+   - a weekly strategy memo at `data/memos/YYYY-Www.md`.
 
 It uses Python 3.10+ and the standard library only. There is nothing to install and no database.
 
 ```
 demand.py     YouTube outliers (median of ~10 neighbouring uploads), Wikipedia top articles, Reddit top-of-day,
               round-number anniversaries 3-6 weeks ahead, Google Trends daily searches (US)
-angles.py     LLM: signals -> 40 candidate topics -> 5 packages each, 3-beat outline, facts, scores
-shortlist.py  weighted rank, policy gate, category cap, link check -> data/shortlist/YYYY-Www.md
-run_weekly.py all three in order
+angles.py     LLM: signals -> 120 raw ideas (pillar, emotional pull, series) -> top 30 packaged
+              (5 packages, conflict, want/trouble/payoff outline, facts, calibrated scores)
+shortlist.py  weighted rank, pass/fail gates, category cap, near-duplicate rule, link check
+graph.py      data/<week>/graph.json for the private Idea Map page
+memo.py       weekly strategy memo + data/bets.json
+run_weekly.py everything in order
 reweight.py   learns new weights from data/feedback.csv once 20+ videos are published
 retention.py  purges raw third-party YouTube data after 30 days (runs at the start of every weekly run)
 config/       generic settings, angle library, cast roles, and *.example.* templates
@@ -38,6 +52,10 @@ Everything private or generated lives in `data/`, which is never committed:
 | `data/shortlist/YYYY-Www.md` | The weekly shortlist. |
 | `data/weights.learned.json` | Weights learned from feedback. |
 | `data/settings.local.json` | Optional private overrides, merged over `config/settings.json`. |
+| `data/positioning.json` | The channel positioning every step reads; template in `config/positioning.example.json`. |
+| `data/positioning-options.md` | The positioning options for the owner to choose from. |
+| `data/<week>/graph.json` | Idea Map export. |
+| `data/memos/YYYY-Www.md`, `data/bets.json` | Weekly memos and each week's structured bet. |
 
 Runs stay **local** (Windows Task Scheduler), not in GitHub Actions: Actions logs and artifacts on a public
 repo are public.
@@ -82,7 +100,7 @@ These rules come from the YouTube API Services Developer Policies
   - Channel IDs come from `channels.list?forHandle=`, and statistics come from `videos.list`.
 - **30-day limit on other channels' statistics (III.E.4.b/d).**
   - `retention.py` runs before every weekly run, using `retention.purge_after_days` (default 30).
-  - After 30 days it deletes `data/<week>/signals.json` and the `llm/` prompts, strips the evidence from `topics.json`, and replaces the "Demand evidence" lines in the shortlist.
+  - After 30 days it deletes `data/<week>/signals.json` and the `llm/` prompts, strips the evidence from `topics.json`, replaces the "Demand evidence" lines in the shortlist, scrubs multiples and view counts from that week's memo, and deletes that week's `graph.json`.
   - What stays is our own notes: topic, takeaway, angles, outline, facts, our 1-5 scores and the decision.
   - Clear any hand-pasted `data/manual_videos.csv` rows on the same schedule.
 - **Derived metrics and aggregation (III.E.4.h, III.E.2.b).**
@@ -109,37 +127,79 @@ To remove it: `schtasks /Delete /TN "Topic shortlist" /F`.
 |---|---|
 | YouTube Data API | Free. About 32 channels × 3–8 units, roughly 200 of the 10,000 free daily units. |
 | Wikipedia Pageviews and On-this-day, Reddit Atom feeds, Google Trends RSS | Free. No key needed. About 22 On-this-day requests plus about 40 pageview lookups, and 1 Trends request. |
-| LLM (Sonnet 5.5 via OpenRouter, USD 2 / 10 per M tokens in/out) | About 1 call for topics plus 5 packaging batches. Roughly 40k tokens in and 60k out, so **about USD 0.70**. There is a hard stop at `llm.max_usd_per_run` = USD 1.80, and answers are cached so reruns are free. |
+| LLM (Sonnet 5.5 via OpenRouter, USD 2 / 10 per M tokens in/out) | 1 ideas call (about 120 ideas), 4 packaging batches and 1 memo. Roughly 50k tokens in and 70k out, so **about USD 0.80**. There is a hard stop at `llm.max_usd_per_run` = USD 1.80, and answers are cached so reruns are free. |
+
+## Channel positioning
+
+The positioning lives in `data/positioning.json` because it is strategy, so it stays private. It is read
+before anything else. It sets:
+
+- the audience and what they want to feel;
+- the one-line promise;
+- 3–4 pillars, each with what's in and what's out;
+- the cast's personalities, wants and running gags;
+- tone rules, the no-go list, possible series and a seed list of the first 20 episodes.
+
+`data/positioning-options.md` holds the options for the owner to choose from. The run uses option 1, marked
+`"status": "provisional"`, until the owner picks.
+
+Every idea must name a pillar. Ideas outside the pillars fail the positioning-fit gate, and ideas that could
+become a series get a small bonus.
+
+## From 120 ideas to 15 (packaging first)
+
+1. **Raw ideas.** The LLM writes about 120 ideas, each with:
+   - a conflict arc: who wants what, what goes wrong, and the fact that pays it off;
+   - a pillar;
+   - an emotional-pull rating (surprise, stakes, awe, humour);
+   - a series flag.
+2. **Preselect.** Code keeps the 30 best in-pillar ideas by demand and pull, with small bonuses for series and
+   dated ideas and at most 6 per category.
+3. **Package.** Each of the 30 gets:
+   - 5 packages from the angle library;
+   - a `conflict` and a want / trouble / payoff outline (the fact is the payoff, not the premise);
+   - facts with sources;
+   - scores.
+4. **Calibrate.** On every scored dimension at most 20% of topics keep a 5. Extra 5s become 4s, with ties broken by
+   the other scores, so the scores actually spread. The shortlist header prints the share of 5s per
+   dimension.
 
 ## How scoring works
 
-Each topic gets six scores from 1 to 5, where 5 is best. Default weights are in brackets.
+The weighted criteria are scored 1–5, where 5 is best. Default weights are in brackets.
 
-- **Demand** (0.25): computed in code from the linked signals, not by the LLM.
+- **Demand** (0.25): computed in code from the linked signals.
   - YouTube outlier ×8 or more = 5, ×4 = 4, ×2.5 = 3.
   - Wikipedia views: 1M or more = 5, 300k = 4, 100k = 3.
   - Reddit top-3 post = 3.
+  - Anniversary: median 30-day views across the event's pages: 1M = 5, 200k = 4, 40k = 3.
+  - Google Trends: 500k = 5, 100k = 4, 20k = 3.
   - +1 when two different sources agree.
-  - Anniversary: median 30-day Wikipedia views across the event's pages: 1M = 5, 200k = 4, 40k = 3.
-  - Google Trends: approximate searches: 500k = 5, 100k = 4, 20k = 3.
-  - Each source is multiplied by `demand_source_weights` in `config/settings.json`.
+  - Each source is multiplied by `demand_source_weights`.
+- **Emotional pull** (0.25): surprise, stakes, awe or humour. Would they send it to a friend?
 - **Packaging** (0.20): enticing *and* accurate.
-- **Takeaway** (0.15): one clear thing learned or felt.
-- **Cast fit** (0.15): one speaker per shot, at most two characters on screen, no crowds or real likenesses.
-- **Fact-check** (0.10): every key claim can be checked against public sources in 30 minutes.
-- **Policy safety** (0.15): risk under YouTube's July 2026 inauthentic-content rules (repetitive templated AI
-  video, emotionally manipulative clips, synthetic personas giving health or finance advice), plus drift
-  toward "made for kids".
-- **Timeliness** (0.10): computed in code.
-  - 5 = a dated anniversary; the deadline is the anniversary date, shown as "Publish by".
-  - 4 = a live search trend; publish within `google_trends.publish_within_days` (5).
-  - 3 = evergreen.
+- **Takeaway** (0.10): one clear thing learned or felt.
+- **Cast fit** (0.10): one speaker per shot, at most two characters on screen, no crowds or real likenesses.
+- **Timeliness** (0.10): 5 = dated anniversary, 4 = live trend, 3 = evergreen.
+- **Series bonus:** +0.1 to the total.
 
-Hard gates:
+**Gates (pass/fail, not points).** A topic is held back if any of these fail:
 
-- A topic with policy safety below 3 never reaches the shortlist; it is listed under "Held back".
-- At most 4 topics per category, so the channel does not look templated.
-- Code rejects thumbnail text over 5 words, more than two characters on screen, or a speaker who is off screen.
+- positioning fit: it is inside a pillar;
+- policy safety is at least 3. This covers YouTube's July 2026 inauthentic-content rules, made-for-kids drift
+  and the no-go list;
+- fact-check is at least 3.
+
+**Other rules:**
+
+- At most 4 topics per category.
+- If a topic shares its demand signal with a higher-ranked pick, it is held back as a near-duplicate.
+- Code flags any of these:
+  - thumbnail text over 5 words;
+  - more than two characters on screen;
+  - an off-screen speaker;
+  - an incomplete conflict;
+  - outline beats other than want / trouble / payoff.
 
 Packaging rules the LLM is given ("legit bait"):
 
@@ -147,6 +207,36 @@ Packaging rules the LLM is given ("legit bait"):
 - No "insane/shocking/you won't believe", no fake urgency, no fear hooks.
 - AI, models or production methods are never mentioned.
 - Reddit posts are used only as themes; no private person's story is retold.
+
+## Weekly memo and bets
+
+`memo.py` writes `data/memos/YYYY-Www.md`, at most about 1,500 words. It reads:
+
+- the positioning;
+- the last two memos;
+- last week's bet from `data/bets.json`;
+- `data/feedback.csv`;
+- this week's shortlist and evidence.
+
+| Section | What it contains |
+|---|---|
+| **Signal** | Up to 3 trends in our pillars, each tagged new / building / saturating / disproven, with evidence. |
+| **Scoreboard** | Our videos against our own baseline (median 7-day views), computed in code. Says "no data yet" until videos exist, and lists resurfacing candidates. |
+| **Strategy** | Grades last week's bet A–F with the reason, then gives one main move, 3 episode plays with first-3-seconds lines, one experiment and one thing to stop. |
+| **Watchlist** | 2–4 things to check next week. |
+
+This week's bet is stored as structured data in `data/bets.json` (main move, hypothesis, metric, target,
+plays, experiment, stop), so next week's memo can grade it.
+
+## Idea Map export
+
+`graph.py` writes `data/<week>/graph.json`:
+
+- **Nodes:** topic, category, angle, and the evidence kinds youtube, wikipedia, reddit, anniversary and trend.
+- **Links:** category, angle, evidence, and "related" when two topics share evidence.
+- **Meta:** funnel counts and signal totals.
+
+The private Idea Map page reads this file. It contains YouTube statistics, so it stays local.
 
 ## Timely sources
 
@@ -165,7 +255,7 @@ Packaging rules the LLM is given ("legit bait"):
 
 After publishing, add one row per video to `data/feedback.csv`:
 
-- `topic_id`: copy it from the shortlist, for example `2026-W44-01-why-metal-bends-not-snaps`.
+- `topic_id`: copy it from the shortlist, for example `2026-W44-01-silly-string-tripwires`.
 - `package_used`: the angle id, such as `counter`, `whatif` or `livesit`.
 - Views at 48 hours and 7 days, CTR, average view duration, and returning-viewer share from YouTube Studio.
 

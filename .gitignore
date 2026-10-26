@@ -13,9 +13,12 @@
 !/run_weekly.py
 !/reweight.py
 !/retention.py
+!/graph.py
+!/memo.py
 !/config/settings.json
 !/config/angles.json
 !/config/cast.json
 !/config/seed_channels.example.csv
 !/config/feedback.example.csv
 !/config/manual_videos.example.csv
+!/config/positioning.example.json

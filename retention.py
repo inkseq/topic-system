@@ -2,10 +2,12 @@
 
 For every data/<week>/ whose signals were collected more than `retention.purge_after_days` days ago
 (settings.json; null turns the purge off - override privately in data/settings.local.json):
-  - delete signals.json (raw views, outlier ratios, Wikipedia/Reddit pulls) and llm/ (prompts quote them);
+  - delete signals.json (raw views, outlier ratios, Wikipedia/Reddit pulls), llm/ (prompts quote them)
+    and graph.json (the Idea Map export);
   - strip evidence and demand notes from topics.json, keeping our own notes (topic, takeaway, packages,
     outline, facts, scores, risk flags);
-  - replace the "Demand evidence" lines in data/shortlist/<week>.md.
+  - replace the "Demand evidence" lines in data/shortlist/<week>.md;
+  - scrub outlier multiples and view counts from data/memos/<week>.md.
 Kept: the shortlist decision itself, our 1-5 scores, chosen angles, and data/feedback.csv (our own channel).
 run_weekly.py calls this before every run; `python retention.py` runs it on its own.
 """
@@ -31,6 +33,7 @@ def purge(now=None, max_age_days=None):
             continue
         (week_dir / "signals.json").unlink()
         shutil.rmtree(week_dir / "llm", ignore_errors=True)
+        (week_dir / "graph.json").unlink(missing_ok=True)  # Idea Map export carries YouTube numbers
         topics_path = week_dir / "topics.json"
         if topics_path.exists():
             meta = load_json(topics_path)
@@ -46,6 +49,22 @@ def purge(now=None, max_age_days=None):
                           text, count=1, flags=re.M)
             md.write_text(text, encoding="utf-8")
         purged.append(week_dir.name)
+    # Memos quote outlier multiples and view counts; scrub those numbers once the week is past the limit.
+    memos = DATA / "memos"
+    for md in sorted(memos.glob("*.md")) if memos.exists() else []:
+        try:
+            y, w = md.stem.split("-W")
+            monday = dt.datetime.combine(dt.date.fromisocalendar(int(y), int(w), 1), dt.time(), dt.timezone.utc)
+        except ValueError:
+            continue
+        if (now - monday).days <= max_age_days:
+            continue
+        text = md.read_text(encoding="utf-8")
+        new = re.sub(r"\(?\bx\d+(?:\.\d+)?\)?", "", text)
+        new = re.sub(r"\d[\d,.\-]*\s?[MK]?\+? views", "[views removed]", new)
+        if new != text:
+            md.write_text(new, encoding="utf-8")
+            purged.append(f"memo {md.stem}")
     if purged:
         print(f"[retention] purged raw YouTube/Reddit/Wikipedia data older than {max_age_days} days: {', '.join(purged)}")
     return purged
