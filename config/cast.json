@@ -2,7 +2,7 @@
   "_note": "Role labels used in story outlines. Rename to the real cast names once they are fixed.",
   "roles": {
     "asker": "Curious asker - voices the viewer's question, reacts honestly",
-    "explainer": "Knowledgeable explainer - calm, precise, never preachy",
+    "explainer": "Knowledgeable explainer - calm, precise, never preachy; politely challenges common wisdom ('Partly.') with checked facts",
     "messup": "Comic mess-up - tries the wrong idea first so the right one lands"
   },
   "constraints": [

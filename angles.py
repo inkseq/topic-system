@@ -105,6 +105,14 @@ def signal_lines(signals):
         news = "; ".join(n for n in g["news"] if n)
         lines.append(f"{sid} [US Google trend, {g['traffic']:,}+ searches, fades fast] {g['query']}"
                      + (f" (news: {news[:120]})" if news else ""))
+    for i, d in enumerate(signals.get("dense", []), 1):
+        sid = f"D{i:02d}"
+        index[sid] = {"source": "dense", **d}
+        lines.append(f"{sid} [dense: {d['feed']}] {d['title']}" + (f" - {d['blurb']}" if d.get("blurb") else ""))
+    for i, f in enumerate(signals.get("favorites", []), 1):
+        sid = f"F{i:02d}"
+        index[sid] = {"source": "favorite", **f}
+        lines.append(f"{sid} [team favourite] {f['text']}")
     return lines, index
 
 
@@ -147,7 +155,10 @@ def raw_ideas(signals, llm, pos):
     n = llm.cfg["raw_ideas"]
     user = f"""Below are this week's demand signals: YouTube videos that beat their own channel's median
 (outlier multiple shown), yesterday's most-read English Wikipedia articles, top-of-day Reddit posts,
-round-number anniversaries 3-6 weeks ahead (A), and US Google daily search trends (G).
+round-number anniversaries 3-6 weeks ahead (A), US Google daily search trends (G), high-idea-density sources
+nobody else mines (D: Wikipedia's Unusual articles, Public Domain Review, Atlas Obscura, Project Gutenberg's
+most-read books) and the team's favourites (F: things they personally love).
+Validated signals (Y, W, R, A, G) show proven demand; D and F show taste and novelty.
 Most signals are noise for us (elections, sport, films, gossip, channel promos).
 
 Brainstorm {n} raw episode ideas. Quantity first: strong channels write about 100 ideas per winner, so
@@ -165,6 +176,11 @@ include bold and odd ones. Rules:
   Skip celebrities, news events, sports results and anything needing a real person's likeness.
 - emotional_pull 1-5 (surprise, stakes, awe, humour). Calibrate: at most 1 idea in 5 gets a 5; 3 is average.
 - series: true when the idea could be a recurring format (one of the possible series or a new one).
+- Favourites (F): the strongest ideas pair one favourite with one validated signal through our cast's point of
+  view - cite both ids. Tag each favourite with a pillar; skip any that fit none.
+- Dense sources (D): use them for at least a fifth of the ideas, especially where no YouTube outlier already
+  covers the subject. Public-domain books can be adapted; Atlas Obscura and Public Domain Review are research
+  leads only - never copy their writing.
 
 Return JSON only: {{"ideas": [{{"key": "kebab-slug", "idea": "working title", "hook": "who wants what ->
 what goes wrong -> the fact that pays it off", "takeaway": "one sentence", "pillar": "<pillar id>",
@@ -198,6 +214,10 @@ def demand_score(signal_ids, index, source_weights=None):
         elif s["source"] == "google_trends":
             x = s["traffic"]
             v = 5 if x >= 500_000 else 4 if x >= 100_000 else 3 if x >= 20_000 else 2
+        elif s["source"] == "dense":
+            v = 3  # curated oddity: real interest, no popularity number
+        elif s["source"] == "favorite":
+            continue  # taste, not demand - scored separately
         else:
             v = 3 if s["rank"] <= 3 else 2
         best = max(best, round(v * source_weights.get(s["source"], 1.0)))
@@ -216,12 +236,24 @@ def timeliness(evidence, cfg):
     return 3, None, None
 
 
+def taste_novelty(evidence):
+    """taste: 5 when the idea grows from a team favourite. novelty: 5 when a dense source supplies a subject no
+    YouTube outlier covers, 4 when dense and YouTube overlap, otherwise 3."""
+    kinds = {e["source"] for e in evidence}
+    fav = next((e["text"] for e in evidence if e["source"] == "favorite"), None)
+    taste = 5 if fav else 3
+    novelty = 5 if "dense" in kinds and "youtube" not in kinds else 4 if "dense" in kinds else 3
+    return taste, novelty, fav
+
+
 def preselect(ideas, cfg):
     """Keep the best `package_top` in-pillar ideas by demand and emotional pull, with a per-category cap."""
     p = cfg["preselect"]
     ranked = sorted(ideas, key=lambda t: -(p["w_demand"] * t["demand"] + p["w_pull"] * t.get("emotional_pull", 3)
                                            + (p["series_bonus"] if t.get("series") else 0)
-                                           + (p["timely_bonus"] if t["timeliness"] >= 4 else 0)))
+                                           + (p["timely_bonus"] if t["timeliness"] >= 4 else 0)
+                                           + (p.get("novelty_bonus", 0) if t["novelty"] == 5 else 0)
+                                           + (p.get("taste_bonus", 0) if t["taste"] == 5 else 0)))
     keep, per_cat = [], {}
     for t in ranked:
         if per_cat.get(t["category"], 0) >= p["max_per_category"]:
@@ -254,7 +286,8 @@ def package_batch(name, topics, llm, angles, cast, pos):
                       f"takeaway: {t['takeaway']}" for t in topics)
     user = f"""For each topic below produce packaging, a conflict-first story outline, facts to verify and scores.
 
-ANGLE LIBRARY (use 5 different angles per topic; favour stakes, what-if and counter when they fit)
+ANGLE LIBRARY (use 5 different angles per topic; favour stakes, what-if, counter and disagree when they fit;
+"disagree" must be grounded and fact-checked, voiced by the explainer, never contrarian for its own sake)
 {angle_text}
 
 Constraints: {"; ".join(cast["constraints"])}.
@@ -364,6 +397,7 @@ def build(week=None, mode="api"):
         t["demand"] = demand_score(t.get("signal_ids", []), index, cfg.get("demand_source_weights"))
         t["evidence"] = [index[s] for s in t.get("signal_ids", []) if s in index]
         t["timeliness"], t["publish_by"], t["time_reason"] = timeliness(t["evidence"], cfg)
+        t["taste"], t["novelty"], t["favorite"] = taste_novelty(t["evidence"])
         t["in_pillar"] = t.get("pillar") in pillar_ids  # positioning_fit gate
     fit = [t for t in ideas if t["in_pillar"]]
     topics = preselect(fit, cfg)
@@ -407,7 +441,8 @@ def build(week=None, mode="api"):
                                    "positioning": {"name": pos["name"], "status": pos["status"]},
                                    "pending": pending, "ideas_total": len(ideas), "ideas_in_pillar": len(fit),
                                    "ideas": [{k: t.get(k) for k in ("key", "idea", "hook", "pillar", "category",
-                                              "emotional_pull", "series", "demand", "in_pillar", "packaged")}
+                                              "emotional_pull", "series", "demand", "taste", "novelty", "favorite",
+                                              "signal_ids", "in_pillar", "packaged")}
                                              for t in ideas],
                                    "topics": topics})
     print(f"[angles] done, LLM spend ${llm.spent:.3f}")

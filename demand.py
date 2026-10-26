@@ -14,11 +14,14 @@ so a channel that is growing fast does not make every new upload look like an ou
 import csv
 import datetime as dt
 import json
+import random
 import re
 import statistics
 import sys
 import time
+import urllib.error
 import urllib.parse
+import urllib.robotparser
 from concurrent.futures import ThreadPoolExecutor
 import xml.etree.ElementTree as ET  # Reddit Atom feed
 
@@ -326,6 +329,122 @@ def google_trends(cfg, ua):
     return out[: gcfg["max_items"]]
 
 
+# ---------- dense sources (high idea density; research only, lightly fetched, robots.txt respected) ----------
+
+_ROBOTS = {}
+
+
+def robots_allowed(url, ua):
+    parts = urllib.parse.urlsplit(url)
+    base = f"{parts.scheme}://{parts.netloc}"
+    if base not in _ROBOTS:
+        rp = urllib.robotparser.RobotFileParser()
+        try:
+            rp.parse(http_get(base + "/robots.txt", ua, retries=1).decode("utf-8", "ignore").splitlines())
+        except urllib.error.HTTPError as e:
+            rp.parse([] if e.code == 404 else ["User-agent: *", "Disallow: /"])  # no robots.txt = allowed
+        except Exception:
+            rp.parse(["User-agent: *", "Disallow: /"])  # unreachable: stay out
+        _ROBOTS[base] = rp
+    return _ROBOTS[base].can_fetch(ua, url)
+
+
+def _polite_get(url, ua):
+    if not robots_allowed(url, ua):
+        raise PermissionError(f"robots.txt disallows {url}")
+    time.sleep(1)
+    return http_get(url, ua)
+
+
+def _clean(s):
+    s = re.sub(r"<[^>]+>", " ", s or "")
+    s = re.sub(r"\{\{[^}]*\}\}|'''?|\[\[(?:[^\]|]*\|)?([^\]]*)\]\]", r"\1", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def unusual_articles(dcfg, ua, week_no):
+    """A rotating sample of Wikipedia's 'Unusual articles' sections (raw wikitext via /wiki/...?action=raw)."""
+    secs = dcfg["unusual_sections"]
+    pick = [secs[(week_no + i) % len(secs)] for i in range(dcfg["unusual_sections_per_run"])]
+    rng = random.Random(week_no)
+    out = []
+    for sec in pick:
+        url = ("https://en.wikipedia.org/wiki/" + urllib.parse.quote(f"Wikipedia:Unusual articles/{sec}".replace(" ", "_"))
+               + "?action=raw")
+        try:
+            raw = _polite_get(url, ua).decode("utf-8", "ignore")
+        except Exception as e:
+            print(f"  ! unusual articles {sec}: {e}", file=sys.stderr)
+            continue
+        rows = re.findall(r"'''\[\[([^\]|]+)(?:\|[^\]]*)?\]\]'''\s*\n\|\s*(?:width=\"\d+%\"\s*\|\s*)?(.+)", raw)
+        for title, blurb in rng.sample(rows, min(dcfg["unusual_per_section"], len(rows))):
+            out.append({"source": "dense", "feed": "Wikipedia Unusual articles", "section": sec, "title": title,
+                        "blurb": _clean(blurb)[:200],
+                        "url": "https://en.wikipedia.org/wiki/" + urllib.parse.quote(title.replace(" ", "_"))})
+    return out
+
+
+def rss_items(url, feed, ua, limit):
+    try:
+        root = ET.fromstring(_polite_get(url, ua))
+    except Exception as e:
+        print(f"  ! {feed}: {e}", file=sys.stderr)
+        return []
+    out = []
+    for it in list(root.iter("item"))[:limit]:
+        out.append({"source": "dense", "feed": feed, "title": _clean(it.findtext("title")),
+                    "blurb": _clean(it.findtext("description"))[:200], "url": (it.findtext("link") or "").strip()})
+    return out
+
+
+def gutenberg_top(ua, limit):
+    """Most-downloaded public-domain books yesterday: seeds for old-book stories and folklore."""
+    url = "https://www.gutenberg.org/browse/scores/top"
+    try:
+        html = _polite_get(url, ua).decode("utf-8", "ignore")
+    except Exception as e:
+        print(f"  ! gutenberg: {e}", file=sys.stderr)
+        return []
+    block = html[html.find("Top 100 EBooks yesterday"):]
+    block = block[: block.find("</ol>")]
+    out = []
+    for book_id, text in re.findall(r'<a href="/ebooks/(\d+)">([^<]+)</a>', block)[:limit]:
+        title = re.sub(r"\s*\(\d+\)$", "", text).strip()
+        out.append({"source": "dense", "feed": "Project Gutenberg top 100", "title": title, "blurb": "public-domain book",
+                    "url": f"https://www.gutenberg.org/ebooks/{book_id}"})
+    return out
+
+
+def dense_sources(cfg, ua):
+    dcfg = cfg["dense"]
+    week_no = NOW.isocalendar()[1]
+    items = unusual_articles(dcfg, ua, week_no)
+    items += rss_items("https://publicdomainreview.org/rss.xml", "Public Domain Review", ua, dcfg["rss_items"])
+    items += rss_items("https://www.atlasobscura.com/feeds/latest", "Atlas Obscura", ua, dcfg["rss_items"])
+    items += gutenberg_top(ua, dcfg["gutenberg_items"])
+    return items
+
+
+# ---------- favorites (the owner's and team's taste inbox) ----------
+
+def favorites():
+    """data/favorites.md: one favourite per line or bullet; '#' lines and <!-- comments --> are ignored."""
+    path = DATA / "favorites.md"
+    if not path.exists():
+        return []
+    text = re.sub(r"<!--.*?-->", "", path.read_text(encoding="utf-8"), flags=re.S)  # drop (multi-line) comments
+    out = []
+    for line in text.splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        s = re.sub(r"^[-*+]\s+|^\d+[.)]\s+", "", s)
+        if s:
+            url = re.search(r"https?://\S+", s)
+            out.append({"source": "favorite", "text": s, "url": url.group(0).rstrip(").,") if url else None})
+    return out
+
+
 def collect(week=None):
     cfg = settings()
     ua = cfg["user_agent"]
@@ -345,8 +464,13 @@ def collect(week=None):
     print("[demand] Google Trends ...")
     trends = google_trends(cfg, ua)
     print(f"  queries={len(trends)}")
+    print("[demand] Dense sources (Unusual articles, Public Domain Review, Atlas Obscura, Gutenberg) ...")
+    dense = dense_sources(cfg, ua)
+    print(f"  items={len(dense)}")
+    favs = favorites()
+    print(f"[demand] Favorites inbox: {len(favs)} item(s)" + ("" if favs else " - data/favorites.md is empty"))
     signals = {"week": week, "collected_at": NOW.isoformat(), "youtube": yt, "wikipedia": wiki, "reddit": red,
-               "anniversaries": ann, "google_trends": trends}
+               "anniversaries": ann, "google_trends": trends, "dense": dense, "favorites": favs}
     save_json(run_dir(week) / "signals.json", signals)
     return signals
 

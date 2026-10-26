@@ -20,7 +20,7 @@ from pathlib import Path
 from common import DATA, FEEDBACK, load_json, save_json, settings
 
 MIN_VIDEOS = 20
-CRITERIA = ["demand", "emotional_pull", "packaging", "takeaway", "cast_fit", "timeliness"]  # gates are not weighted
+CRITERIA = ["demand", "emotional_pull", "packaging", "takeaway", "cast_fit", "timeliness", "taste", "novelty"]  # gates are not weighted
 METRICS = ["views_7d", "ctr_pct", "avg_view_duration_s", "returning_viewer_pct"]
 
 

@@ -6,9 +6,9 @@ import urllib.request
 from common import DATA, SHORTLIST, iso_week, load_json, run_dir, save_json, settings
 
 # Weighted criteria. fact_check and policy_safety are pass/fail gates, not points.
-CRITERIA = ["demand", "emotional_pull", "packaging", "takeaway", "cast_fit", "timeliness"]
+CRITERIA = ["demand", "emotional_pull", "packaging", "takeaway", "cast_fit", "timeliness", "taste", "novelty"]
 LABELS = {"demand": "Demand", "emotional_pull": "Emotional pull", "packaging": "Packaging", "takeaway": "Takeaway",
-          "cast_fit": "Cast fit", "timeliness": "Timeliness"}
+          "cast_fit": "Cast fit", "timeliness": "Timeliness", "taste": "Taste", "novelty": "Novelty"}
 
 
 def weights():
@@ -18,7 +18,8 @@ def weights():
 
 
 def total(t, w, series_bonus=0.0):
-    s = {**t["scores"], "demand": t["demand"], "timeliness": t.get("timeliness", 3)}
+    s = {**t["scores"], "demand": t["demand"], "timeliness": t.get("timeliness", 3),
+         "taste": t.get("taste", 3), "novelty": t.get("novelty", 3)}
     cs = [c for c in CRITERIA if c in w and c in s]
     base = sum(w[c] * s[c] for c in cs) / sum(w[c] for c in cs)
     return round(base + (series_bonus if t.get("series") else 0), 2)
@@ -53,9 +54,17 @@ def rank(topics, cfg):
         t["gates_failed"] = gate_failures(t, sl)
     scored.sort(key=lambda t: (-t["total"], -t["demand"]))
     picked, rejected, per_cat, used = [], [], {}, {}
+    # Explore slots: keep room for the best "fresh" topics (dense source, no YouTube outlier covering them).
+    fresh_slots = sl.get("fresh_slots", 0)
+    fresh = [t for t in scored if t.get("novelty") == 5]
+    main_size = sl["size"] - min(fresh_slots, len(fresh))
     for t in scored:
+        n_fresh = sum(1 for p in picked if p.get("novelty") == 5)
+        n_main = len(picked) - n_fresh
         if len(picked) >= sl["size"]:
             break
+        if t.get("novelty") != 5 and n_main >= main_size:
+            continue  # remaining places are reserved for fresh topics
         ev = {e.get("video_id") or e.get("url") for e in t.get("evidence", [])}
         dup = next((used[e] for e in ev if e in used), None)
         if t["gates_failed"]:
@@ -65,9 +74,11 @@ def rank(topics, cfg):
         elif dup:  # near-duplicate: same demand signal as a higher-ranked pick
             rejected.append((t, f"same signal as '{dup}'"))
         else:
+            t["fresh_slot"] = t.get("novelty") == 5 and n_main >= main_size
             picked.append(t)
             per_cat[t["category"]] = per_cat.get(t["category"], 0) + 1
             used.update({e: t["topic"] for e in ev})
+    picked.sort(key=lambda t: (-t["total"], -t["demand"]))
     # Date-pinned topics that missed the top N still matter for planning: list them by publish date.
     dated = sorted((t for t in scored if t not in picked and t.get("publish_by") and not t["gates_failed"]),
                    key=lambda t: t["publish_by"])
@@ -84,6 +95,10 @@ def evidence_line(e):
                 f"{e['text'][:90]}); {e['views_30d']:,} Wikipedia views in 30 days")
     if e["source"] == "google_trends":
         return f"Google Trends (US): [{e['query']}]({e['url']}) - {e['traffic']:,}+ searches; fades fast"
+    if e["source"] == "dense":
+        return f"Dense - {e['feed']}: [{e['title']}]({e['url']})" + (f" ({e['blurb'][:90]})" if e.get("blurb") else "")
+    if e["source"] == "favorite":
+        return f"Team favourite: {e['text']}"
     return f"Reddit r/{e['subreddit']} #{e['rank']} today: [{e['title'][:90]}]({e['url']})"
 
 
@@ -107,24 +122,29 @@ def render(week, picked, rejected, dated, w, meta, signals, link_ok):
         f"Signals: {yt['videos_read']} uploads from {yt['channels_read']} reference channels (source: {yt['mode']}), "
         f"{len(signals['wikipedia']['articles'])} Wikipedia top articles ({signals['wikipedia']['day']}), "
         f"{len(signals['reddit'])} Reddit posts, {len(signals.get('anniversaries', {}).get('events', []))} upcoming "
-        f"round anniversaries, {len(signals.get('google_trends', []))} Google trends.",
+        f"round anniversaries, {len(signals.get('google_trends', []))} Google trends, "
+        f"{len(signals.get('dense', []))} dense-source items, {len(signals.get('favorites', []))} team favourites"
+        + (" (favourites inbox is empty)" if not signals.get("favorites") else "") + ".",
         "",
         f"Funnel: {meta.get('ideas_total', '?')} raw ideas -> {meta.get('ideas_in_pillar', '?')} inside a pillar -> "
         f"{len(packaged)} packaged -> {len(picked)} shortlisted. LLM mode {meta['llm_mode']}, spend ${meta['llm_cost_usd']:.2f}.",
         "",
         "Weights: " + ", ".join(f"{LABELS[c]} {w[c]:.2f}" for c in CRITERIA if c in w)
-        + ". Series bonus +" + str(settings()["shortlist"].get("series_bonus", 0)) + ". Gates (pass/fail): pillar fit, "
+        + ". Series bonus +" + str(settings()["shortlist"].get("series_bonus", 0)) + ". "
+        + f"{settings()['shortlist'].get('fresh_slots', 0)} places are kept for fresh topics (dense source, no YouTube outlier). "
+        + "Gates (pass/fail): pillar fit, "
         "policy safety >= 3, fact-check >= 3. Share of 5s after calibration: "
         + ", ".join(f"{k} {int(v * 100)}%" for k, v in spread(packaged).items()) + ".",
         "",
-        "| # | Topic | Pillar | Total | Dem | Pull | Pack | Take | Cast | Time | Publish by | Flags |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| # | Topic | Pillar | Total | Dem | Pull | Pack | Take | Cast | Time | Taste | Nov | Publish by | Flags |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for i, t in enumerate(picked, 1):
         s = t["scores"]
-        lines.append(f"| {i} | {t['topic']}{' (series)' if t.get('series') else ''} | {t.get('pillar', '-')} | "
+        lines.append(f"| {i} | {t['topic']}{' (series)' if t.get('series') else ''}{' (fresh slot)' if t.get('fresh_slot') else ''} | {t.get('pillar', '-')} | "
                      f"**{t['total']}** | {t['demand']} | {s['emotional_pull']} | {s['packaging']} | {s['takeaway']} | "
-                     f"{s['cast_fit']} | {t.get('timeliness', 3)} | {t.get('publish_by') or 'any time'} | "
+                     f"{s['cast_fit']} | {t.get('timeliness', 3)} | {t.get('taste', 3)} | {t.get('novelty', 3)} | "
+                     f"{t.get('publish_by') or 'any time'} | "
                      f"{', '.join(t.get('risk_flags') or []) or '-'} |")
     lines.append("")
     for i, t in enumerate(picked, 1):
@@ -136,6 +156,12 @@ def render(week, picked, rejected, dated, w, meta, signals, link_ok):
                   f"payoff: {c.get('payoff_fact', '?')}", ""]
         if t.get("publish_by"):
             lines += [f"**Publish by:** {t['publish_by']} ({t['time_reason']})", ""]
+        if t.get("favorite"):
+            lines += [f"**From favourite:** {t['favorite']}", ""]
+        dense = [e for e in t.get("evidence", []) if e["source"] == "dense"]
+        if dense:
+            lines += [f"**Dense source:** {dense[0]['feed']} - {dense[0]['title']}"
+                      + (" (not covered by any YouTube outlier)" if t.get("novelty") == 5 else ""), ""]
         lines += ["**Best packages**", ""]
         for j in (t.get("best") or [0, 1])[:2]:
             p = t["packages"][j]
@@ -191,6 +217,7 @@ def build(week=None):
         {"topic_id": t["topic_id"], "key": t["key"], "topic": t["topic"], "category": t["category"],
          "pillar": t.get("pillar"), "series": bool(t.get("series")),
          "total": t["total"], "demand": t["demand"], "timeliness": t.get("timeliness", 3),
+         "taste": t.get("taste", 3), "novelty": t.get("novelty", 3), "favorite": t.get("favorite"),
          "publish_by": t.get("publish_by"), **t["scores"],
          "angles": [t["packages"][j]["angle"] for j in (t.get("best") or [0, 1])[:2]]} for t in picked]})
     bad = [u for u, ok in link_ok.items() if not ok]

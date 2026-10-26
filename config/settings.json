@@ -48,19 +48,22 @@
     "package_top": 30
   },
   "weights": {
-    "demand": 0.25,
+    "demand": 0.2,
     "emotional_pull": 0.25,
-    "packaging": 0.2,
-    "takeaway": 0.1,
-    "cast_fit": 0.1,
-    "timeliness": 0.1
+    "packaging": 0.15,
+    "takeaway": 0.08,
+    "cast_fit": 0.08,
+    "timeliness": 0.08,
+    "taste": 0.08,
+    "novelty": 0.08
   },
   "shortlist": {
     "size": 15,
     "max_per_category": 4,
     "min_policy_safety": 3,
     "min_fact_check": 3,
-    "series_bonus": 0.1
+    "series_bonus": 0.1,
+    "fresh_slots": 3
   },
   "user_agent": "inkseq-topic-research/0.1 (weekly research script; low volume)",
   "retention": {
@@ -71,16 +74,36 @@
     "wikipedia": 0.9,
     "reddit": 0.8,
     "anniversary": 1.0,
-    "google_trends": 0.9
+    "google_trends": 0.9,
+    "dense": 0.6
   },
   "preselect": {
     "w_demand": 0.4,
     "w_pull": 0.6,
     "series_bonus": 0.2,
     "timely_bonus": 0.2,
-    "max_per_category": 6
+    "max_per_category": 6,
+    "novelty_bonus": 0.3,
+    "taste_bonus": 0.4
   },
   "calibration": {
     "max_share_of_fives": 0.2
+  },
+  "dense": {
+    "unusual_sections": [
+      "Places and infrastructure",
+      "History",
+      "Mathematics and numbers",
+      "Language",
+      "Science",
+      "Technology, inventions and products",
+      "Food",
+      "Folklore",
+      "Society, economy and law"
+    ],
+    "unusual_sections_per_run": 3,
+    "unusual_per_section": 12,
+    "rss_items": 12,
+    "gutenberg_items": 25
   }
 }

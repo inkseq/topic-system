@@ -1,10 +1,62 @@
 [
-  {"id": "counter", "name": "Counter-intuitive", "pattern": "Everyone gets this wrong - here's what actually happens"},
-  {"id": "whatif", "name": "What-if", "pattern": "What would happen if ...?"},
-  {"id": "extreme", "name": "Extreme / record", "pattern": "The biggest / fastest / oldest / smallest ..."},
-  {"id": "hidden", "name": "Hidden reason", "pattern": "The hidden reason behind something familiar"},
-  {"id": "stakes", "name": "Stakes / countdown", "pattern": "You have N seconds/minutes - what do you do?"},
-  {"id": "livesit", "name": "Cast lives through it", "pattern": "One of our characters lives through the event or situation"},
-  {"id": "thennow", "name": "Then vs now", "pattern": "How it was vs how it is now"},
-  {"id": "mystery", "name": "Mystery to solve", "pattern": "A puzzle the viewer solves alongside the cast"}
+  {
+    "id": "counter",
+    "name": "Counter-intuitive",
+    "pattern": "Everyone gets this wrong - here's what actually happens"
+  },
+  {
+    "id": "whatif",
+    "name": "What-if",
+    "pattern": "What would happen if ...?"
+  },
+  {
+    "id": "extreme",
+    "name": "Extreme / record",
+    "pattern": "The biggest / fastest / oldest / smallest ..."
+  },
+  {
+    "id": "hidden",
+    "name": "Hidden reason",
+    "pattern": "The hidden reason behind something familiar"
+  },
+  {
+    "id": "stakes",
+    "name": "Stakes / countdown",
+    "pattern": "You have N seconds/minutes - what do you do?"
+  },
+  {
+    "id": "livesit",
+    "name": "Cast lives through it",
+    "pattern": "One of our characters lives through the event or situation"
+  },
+  {
+    "id": "thennow",
+    "name": "Then vs now",
+    "pattern": "How it was vs how it is now"
+  },
+  {
+    "id": "mystery",
+    "name": "Mystery to solve",
+    "pattern": "A puzzle the viewer solves alongside the cast"
+  },
+  {
+    "id": "disagree",
+    "name": "Where we disagree",
+    "pattern": "State the common belief, then where we disagree and why - grounded and fact-checked, never contrarian for its own sake"
+  },
+  {
+    "id": "redefine",
+    "name": "Redefine it",
+    "pattern": "Reframe what the thing really is (e.g. 'constraints don't make you creative, they make you decisive')"
+  },
+  {
+    "id": "pastself",
+    "name": "Tell your younger self",
+    "pattern": "How a cast member would explain this to their younger self"
+  },
+  {
+    "id": "whymatters",
+    "name": "Why it matters to you",
+    "pattern": "Why the everyday viewer should care, in their own life, today"
+  }
 ]

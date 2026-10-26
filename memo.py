@@ -80,6 +80,14 @@ def build(week=None, mode="api"):
                 evidence.append(f"[{t.get('pillar')}] YouTube {e['channel']}: {e['title']} (x{e['outlier']})")
             elif e["source"] == "anniversary":
                 evidence.append(f"[{t.get('pillar')}] Anniversary {e['date']}: {e['text'][:80]}")
+    sig = load_json(rd / "signals.json")
+    favs = sig.get("favorites", [])
+    fav_used = sorted({t["favorite"] for t in meta["topics"] if t.get("favorite")})
+    fav_text = ("EMPTY - say in one line under Watchlist that data/favorites.md is empty and suggest 3 specific "
+                "things the owner could add that fit our pillars." if not favs else
+                f"{len(favs)} favourites; used in topics: {fav_used or 'none'}. Mention any strong favourite + "
+                "validated-signal pairing under Strategy.")
+    dense_n = sum(1 for t in meta["topics"] if t.get("novelty", 3) >= 4)
     user = f"""Write this week's strategy memo for our channel, modelled on a "weekly strategist" review.
 Maximum {MAX_WORDS} words, markdown, plain and specific. Never name AI models or say how videos are made.
 
@@ -100,6 +108,9 @@ Return JSON only: {{"memo_markdown": "...", "bet": {{"main_move": "...", "hypoth
 "experiment": "...", "stop": "..."}}, "last_bet_grade": {{"grade": "A-F or n/a", "reason": "..."}}}}
 
 POSITIONING STATUS: {pos['status']} (option {pos.get('option')}). If provisional, say so in one line.
+
+FAVOURITES INBOX: {fav_text}
+DENSE SOURCES: {len(sig.get('dense', []))} items read; {dense_n} packaged topics use them.
 
 SCOREBOARD (computed from data/feedback.csv)
 {scoreboard()}

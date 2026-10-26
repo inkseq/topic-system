@@ -1,6 +1,7 @@
 """Export data/<week>/graph.json for the private Idea Map page.
 
-Nodes: topic, category, angle, and evidence kinds youtube / wikipedia / reddit / anniversary / trend.
+Nodes: topic, category, angle, and evidence kinds youtube / wikipedia / reddit / anniversary / trend / dense /
+favorite.
 Links: topic->category, topic->angle (best packages), topic->evidence, and topic<->topic "related" when two
 topics share a piece of evidence. Only packaged topics are drawn; meta carries the funnel counts.
 """
@@ -10,7 +11,9 @@ from common import iso_week, load_json, run_dir, save_json, settings
 from shortlist import total, weights
 
 ANGLE = {"counter": "Counter-intuitive", "hidden": "Hidden reason", "mystery": "Mystery", "livesit": "Cast lives it",
-         "extreme": "Extreme / record", "thennow": "Then vs now", "whatif": "What if", "stakes": "Stakes / countdown"}
+         "extreme": "Extreme / record", "thennow": "Then vs now", "whatif": "What if", "stakes": "Stakes / countdown",
+         "disagree": "Where we disagree", "redefine": "Redefine it", "pastself": "Tell your younger self",
+         "whymatters": "Why it matters"}
 
 
 def evidence_node(e):
@@ -27,6 +30,11 @@ def evidence_node(e):
     if kind == "anniversary":
         return {"id": f"n:{e['date']}:{e['page']}", "kind": "anniversary", "name": f"{e['years']} years: {e['text']}",
                 "date": e["date"], "views": e.get("views_30d"), "url": e.get("url")}
+    if kind == "dense":
+        return {"id": "d:" + (e.get("url") or e["title"]), "kind": "dense", "name": e["title"], "feed": e.get("feed"),
+                "blurb": e.get("blurb"), "url": e.get("url")}
+    if kind == "favorite":
+        return {"id": "f:" + e["text"][:80], "kind": "favorite", "name": e["text"], "url": e.get("url")}
     if kind == "google_trends":
         return {"id": "g:" + e["query"], "kind": "trend", "name": e["query"], "traffic": e.get("traffic"),
                 "publish_by": e.get("publish_by"), "url": e.get("url")}
@@ -59,7 +67,9 @@ def build(week=None):
              "series": bool(t.get("series")), "score": total(t, w, bonus), "rank": rank.get(t["key"]),
              "takeaway": t["takeaway"], "why": t.get("why_demand", ""), "conflict": t.get("conflict"),
              "publish_by": t.get("publish_by"),
-             "scores": dict(t["scores"], demand=t["demand"], timeliness=t.get("timeliness", 3)),
+             "favorite": t.get("favorite"),
+             "scores": dict(t["scores"], demand=t["demand"], timeliness=t.get("timeliness", 3),
+                            taste=t.get("taste", 3), novelty=t.get("novelty", 3)),
              "flags": t.get("risk_flags", []), "packages": best or t["packages"][:2],
              "outline": [{"beat": b["beat"], "lines": [f'{s.get("speaker", "")}: {s.get("action", "")}'
                                                        for s in b.get("shots", [])]} for b in t.get("outline", [])],
@@ -97,7 +107,8 @@ def build(week=None):
                         "youtube_channels": sig["youtube"].get("channels_read"),
                         "wikipedia": len(sig["wikipedia"]["articles"]), "reddit": len(sig["reddit"]),
                         "anniversaries": len(sig.get("anniversaries", {}).get("events", [])),
-                        "trends": len(sig.get("google_trends", []))}}
+                        "trends": len(sig.get("google_trends", [])), "dense": len(sig.get("dense", [])),
+                        "favorites": len(sig.get("favorites", []))}}
     save_json(rd / "graph.json", {"meta": meta, "nodes": nodes, "links": links})
     print(f"[graph] wrote {rd / 'graph.json'} ({len(nodes)} nodes, {len(links)} links)")
 

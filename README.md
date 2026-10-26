@@ -19,7 +19,9 @@ It uses Python 3.10+ and the standard library only. There is nothing to install 
 
 ```
 demand.py     YouTube outliers (median of ~10 neighbouring uploads), Wikipedia top articles, Reddit top-of-day,
-              round-number anniversaries 3-6 weeks ahead, Google Trends daily searches (US)
+              round-number anniversaries 3-6 weeks ahead, Google Trends daily searches (US), "dense"
+              sources (Wikipedia Unusual articles, Public Domain Review, Atlas Obscura, Gutenberg) and
+              the team's favourites inbox
 angles.py     LLM: signals -> 120 raw ideas (pillar, emotional pull, series) -> top 30 packaged
               (5 packages, conflict, want/trouble/payoff outline, facts, calibrated scores)
 shortlist.py  weighted rank, pass/fail gates, category cap, near-duplicate rule, link check
@@ -52,6 +54,7 @@ Everything private or generated lives in `data/`, which is never committed:
 | `data/shortlist/YYYY-Www.md` | The weekly shortlist. |
 | `data/weights.learned.json` | Weights learned from feedback. |
 | `data/settings.local.json` | Optional private overrides, merged over `config/settings.json`. |
+| `data/favorites.md` | The team's favourites inbox (one item per line or bullet); template in `config/favorites.example.md`. |
 | `data/positioning.json` | The channel positioning every step reads; template in `config/positioning.example.json`. |
 | `data/positioning-options.md` | The positioning options for the owner to choose from. |
 | `data/<week>/graph.json` | Idea Map export. |
@@ -127,7 +130,51 @@ To remove it: `schtasks /Delete /TN "Topic shortlist" /F`.
 |---|---|
 | YouTube Data API | Free. About 32 channels × 3–8 units, roughly 200 of the 10,000 free daily units. |
 | Wikipedia Pageviews and On-this-day, Reddit Atom feeds, Google Trends RSS | Free. No key needed. About 22 On-this-day requests plus about 40 pageview lookups, and 1 Trends request. |
+| Dense sources | Free. 3 Wikipedia pages, 2 RSS feeds and 1 Gutenberg page per run, each after a robots.txt check and a 1-second pause. |
 | LLM (Sonnet 5.5 via OpenRouter, USD 2 / 10 per M tokens in/out) | 1 ideas call (about 120 ideas), 4 packaging batches and 1 memo. Roughly 50k tokens in and 70k out, so **about USD 0.80**. There is a hard stop at `llm.max_usd_per_run` = USD 1.80, and answers are cached so reruns are free. |
+
+## Favourites and dense sources
+
+**Favourites** are the "loved" half of the idea pair.
+
+- The owner and team add things they personally love to `data/favorites.md`: one per line or bullet, with a link
+  or note.
+- Each run passes them to the ideas step as `F` signals. The LLM tags each with a pillar and tries to pair it
+  with a validated signal (`Y`, `W`, `R`, `A`, `G`) through the cast's point of view.
+- A topic that grows from a favourite gets taste 5, and the shortlist shows "From favourite: ...".
+- When the inbox is empty, the memo says so and suggests three things to add.
+
+**Dense sources** have high idea density and are not the feeds everyone reads. They are research only and
+lightly fetched with a descriptive User-Agent. robots.txt is checked first, and raw responses are stored only in
+`data/<week>/signals.json`.
+
+| Source | How it's read |
+|---|---|
+| Wikipedia "Unusual articles" | 3 sections per week, rotating by ISO week, read through `/wiki/...?action=raw` because robots.txt disallows the API paths. 12 sampled entries per section. |
+| Public Domain Review | RSS feed. |
+| Atlas Obscura | RSS feed. |
+| Project Gutenberg | Top-100 "yesterday" list, used as seeds for old-book stories and folklore. Public-domain texts can be adapted. |
+
+Atlas Obscura and Public Domain Review are leads only: their writing is never copied.
+
+## Angle library
+
+`config/angles.json` has 12 angles:
+
+| Angle | What it does |
+|---|---|
+| counter | Counter-intuitive fact. |
+| what-if | A hypothetical scenario. |
+| extreme | The biggest, smallest, fastest or record case. |
+| hidden reason | The reason behind something familiar. |
+| stakes | A countdown or something to lose. |
+| cast lives it | A cast member goes through the situation. |
+| then vs now | How it was compared with how it is. |
+| mystery | A puzzle the viewer solves along with the cast. |
+| **disagree** | State the common belief, then where we disagree and why. Grounded and fact-checked, never contrarian for its own sake; voiced by the explainer, who now politely challenges common wisdom. |
+| **redefine** | Reframe what the thing really is. |
+| **past self** | How a cast member would explain it to their younger self. |
+| **why it matters** | Why the everyday viewer should care. |
 
 ## Channel positioning
 
@@ -168,19 +215,26 @@ become a series get a small bonus.
 
 The weighted criteria are scored 1–5, where 5 is best. Default weights are in brackets.
 
-- **Demand** (0.25): computed in code from the linked signals.
+- **Demand**: computed in code from the linked signals.
   - YouTube outlier ×8 or more = 5, ×4 = 4, ×2.5 = 3.
   - Wikipedia views: 1M or more = 5, 300k = 4, 100k = 3.
   - Reddit top-3 post = 3.
   - Anniversary: median 30-day views across the event's pages: 1M = 5, 200k = 4, 40k = 3.
   - Google Trends: 500k = 5, 100k = 4, 20k = 3.
+  - Dense source: 3. It is a curated oddity with no popularity number.
   - +1 when two different sources agree.
   - Each source is multiplied by `demand_source_weights`.
-- **Emotional pull** (0.25): surprise, stakes, awe or humour. Would they send it to a friend?
-- **Packaging** (0.20): enticing *and* accurate.
-- **Takeaway** (0.10): one clear thing learned or felt.
-- **Cast fit** (0.10): one speaker per shot, at most two characters on screen, no crowds or real likenesses.
-- **Timeliness** (0.10): 5 = dated anniversary, 4 = live trend, 3 = evergreen.
+- **Emotional pull**: surprise, stakes, awe or humour. Would they send it to a friend?
+- **Packaging**: enticing *and* accurate.
+- **Takeaway**: one clear thing learned or felt.
+- **Cast fit**: one speaker per shot, at most two characters on screen, no crowds or real likenesses.
+- **Timeliness**: 5 = dated anniversary, 4 = live trend, 3 = evergreen.
+- **Taste**: 5 when the idea grows from a team favourite, otherwise 3.
+- **Novelty**: 5 when a dense source supplies a subject no YouTube outlier covers, 4 when dense and YouTube
+  overlap, otherwise 3.
+
+Current default weights are in `config/settings.json`: demand 0.20, emotional pull 0.25, packaging 0.15, then 0.08
+each for takeaway, cast fit, timeliness, taste and novelty.
 - **Series bonus:** +0.1 to the total.
 
 **Gates (pass/fail, not points).** A topic is held back if any of these fail:
@@ -194,6 +248,9 @@ The weighted criteria are scored 1–5, where 5 is best. Default weights are in 
 
 - At most 4 topics per category.
 - If a topic shares its demand signal with a higher-ranked pick, it is held back as a near-duplicate.
+- **Fresh slots.** Up to `shortlist.fresh_slots` (3) of the 15 places are kept for the best "fresh" topics: novelty
+  5, gates passed. A fresh topic that earns its place on merit also counts toward the 3. Reserved picks are marked
+  "(fresh slot)".
 - Code flags any of these:
   - thumbnail text over 5 words;
   - more than two characters on screen;
