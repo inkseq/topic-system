@@ -94,6 +94,17 @@ def signal_lines(signals):
         sid = f"R{i:02d}"
         index[sid] = {"source": "reddit", **p}
         lines.append(f"{sid} [r/{p['subreddit']} top-of-day #{p['rank']}] {p['title']}")
+    for i, a in enumerate(signals.get("anniversaries", {}).get("events", []), 1):
+        sid = f"A{i:02d}"
+        index[sid] = {"source": "anniversary", **a}
+        lines.append(f"{sid} [{a['years']}th anniversary on {a['date']}, {a['views_30d']:,} wiki views/30d] "
+                     f"{a['year']}: {a['text']}")
+    for i, g in enumerate(signals.get("google_trends", []), 1):
+        sid = f"G{i:02d}"
+        index[sid] = {"source": "google_trends", **g}
+        news = "; ".join(n for n in g["news"] if n)
+        lines.append(f"{sid} [US Google trend, {g['traffic']:,}+ searches, fades fast] {g['query']}"
+                     + (f" (news: {news[:120]})" if news else ""))
     return lines, index
 
 
@@ -111,8 +122,9 @@ def candidate_topics(signals, llm):
     lines, index = signal_lines(signals)
     n = llm.cfg["candidate_topics"]
     user = f"""Below are this week's demand signals: YouTube videos that beat their own channel's median
-(outlier multiple shown), yesterday's most-read English Wikipedia articles, and top-of-day Reddit posts from
-learning/story subreddits. Most signals are noise for us (elections, sport, films, gossip, channel promos).
+(outlier multiple shown), yesterday's most-read English Wikipedia articles, top-of-day Reddit posts from
+learning/story subreddits, round-number anniversaries 3-6 weeks ahead (A), and US Google daily search trends (G).
+Most signals are noise for us (elections, sport, films, gossip, channel promos).
 
 Propose {n} distinct candidate topics for our channel. Rules:
 - Each topic must teach one concrete, verifiable thing or leave a warm feeling, and be actable by our cast.
@@ -120,6 +132,10 @@ Propose {n} distinct candidate topics for our channel. Rules:
   Do not copy another creator's video - find our own angle on the same curiosity.
 - At most 8 topics may have no signal (evergreen ideas you are confident have broad demand).
 - Reddit posts are research only: use the general theme, never re-tell a specific person's post.
+- Anniversaries (A): use only discoveries, inventions, firsts, buildings, culture and science; never a war,
+  battle, disaster, death, crime, scandal or politician as the hook. The episode publishes on the anniversary.
+- Google trends (G): only when the trend points at an evergreen "why/how" question our cast can explain.
+  Skip celebrities, news events, sports results and anything that needs a real person's likeness.
 - Spread across categories (science, history, human behaviour, engineering, nature, everyday life, language,
   space); no more than 8 per category.
 
@@ -135,7 +151,8 @@ SIGNALS
 
 # ---------- demand score (deterministic, from linked signals) ----------
 
-def demand_score(signal_ids, index):
+def demand_score(signal_ids, index, source_weights=None):
+    source_weights = source_weights or {}
     best, sources = 1, set()
     for sid in signal_ids:
         s = index.get(sid)
@@ -148,10 +165,28 @@ def demand_score(signal_ids, index):
         elif s["source"] == "wikipedia":
             x = s["views"]
             v = 5 if x >= 1_000_000 else 4 if x >= 300_000 else 3 if x >= 100_000 else 2
+        elif s["source"] == "anniversary":
+            x = s["views_30d"]
+            v = 5 if x >= 1_000_000 else 4 if x >= 200_000 else 3 if x >= 40_000 else 2
+        elif s["source"] == "google_trends":
+            x = s["traffic"]
+            v = 5 if x >= 500_000 else 4 if x >= 100_000 else 3 if x >= 20_000 else 2
         else:
             v = 3 if s["rank"] <= 3 else 2
-        best = max(best, v)
-    return min(5, best + (1 if len(sources) >= 2 else 0))
+        best = max(best, round(v * source_weights.get(s["source"], 1.0)))
+    return max(1, min(5, best + (1 if len(sources) >= 2 else 0)))
+
+
+def timeliness(evidence, cfg):
+    """5 = dated anniversary (deadline = the date), 4 = live search trend (publish within N days), 3 = evergreen."""
+    ann = sorted(e["publish_by"] for e in evidence if e["source"] == "anniversary")
+    if ann:
+        e = next(x for x in evidence if x["source"] == "anniversary" and x["publish_by"] == ann[0])
+        return 5, ann[0], f"{e['years']}th anniversary on {e['date']}"
+    tr = sorted(e["publish_by"] for e in evidence if e["source"] == "google_trends")
+    if tr:
+        return 4, tr[0], f"search trend; publish within {cfg['google_trends']['publish_within_days']} days"
+    return 3, None, None
 
 
 # ---------- step B: packaging, outline, facts, scores ----------
@@ -252,8 +287,9 @@ def build(week=None, mode="api"):
             k, n = f"{base}-{n}", n + 1
         seen.add(k)
         t["key"] = k
-        t["demand"] = demand_score(t.get("signal_ids", []), index)
+        t["demand"] = demand_score(t.get("signal_ids", []), index, cfg.get("demand_source_weights"))
         t["evidence"] = [index[s] for s in t.get("signal_ids", []) if s in index]
+        t["timeliness"], t["publish_by"], t["time_reason"] = timeliness(t["evidence"], cfg)
 
     print(f"[angles] packaging {len(topics)} topics ...")
     by_key = {t["key"]: t for t in topics}

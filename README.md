@@ -7,7 +7,8 @@ one thing or come away feeling good. Each run writes `data/shortlist/YYYY-Www.md
 It uses Python 3.10+ and the standard library only. There is nothing to install and no database.
 
 ```
-demand.py     YouTube outliers (median of ~10 neighbouring uploads), Wikipedia top articles, Reddit top-of-day
+demand.py     YouTube outliers (median of ~10 neighbouring uploads), Wikipedia top articles, Reddit top-of-day,
+              round-number anniversaries 3-6 weeks ahead, Google Trends daily searches (US)
 angles.py     LLM: signals -> 40 candidate topics -> 5 packages each, 3-beat outline, facts, scores
 shortlist.py  weighted rank, policy gate, category cap, link check -> data/shortlist/YYYY-Www.md
 run_weekly.py all three in order
@@ -107,7 +108,7 @@ To remove it: `schtasks /Delete /TN "Topic shortlist" /F`.
 | Item | Cost |
 |---|---|
 | YouTube Data API | Free. About 32 channels × 3–8 units, roughly 200 of the 10,000 free daily units. |
-| Wikipedia Pageviews, Reddit Atom feeds | Free. No key needed. |
+| Wikipedia Pageviews and On-this-day, Reddit Atom feeds, Google Trends RSS | Free. No key needed. About 22 On-this-day requests plus about 40 pageview lookups, and 1 Trends request. |
 | LLM (Sonnet 5.5 via OpenRouter, USD 2 / 10 per M tokens in/out) | About 1 call for topics plus 5 packaging batches. Roughly 40k tokens in and 60k out, so **about USD 0.70**. There is a hard stop at `llm.max_usd_per_run` = USD 1.80, and answers are cached so reruns are free. |
 
 ## How scoring works
@@ -119,6 +120,9 @@ Each topic gets six scores from 1 to 5, where 5 is best. Default weights are in 
   - Wikipedia views: 1M or more = 5, 300k = 4, 100k = 3.
   - Reddit top-3 post = 3.
   - +1 when two different sources agree.
+  - Anniversary: median 30-day Wikipedia views across the event's pages: 1M = 5, 200k = 4, 40k = 3.
+  - Google Trends: approximate searches: 500k = 5, 100k = 4, 20k = 3.
+  - Each source is multiplied by `demand_source_weights` in `config/settings.json`.
 - **Packaging** (0.20): enticing *and* accurate.
 - **Takeaway** (0.15): one clear thing learned or felt.
 - **Cast fit** (0.15): one speaker per shot, at most two characters on screen, no crowds or real likenesses.
@@ -126,6 +130,10 @@ Each topic gets six scores from 1 to 5, where 5 is best. Default weights are in 
 - **Policy safety** (0.15): risk under YouTube's July 2026 inauthentic-content rules (repetitive templated AI
   video, emotionally manipulative clips, synthetic personas giving health or finance advice), plus drift
   toward "made for kids".
+- **Timeliness** (0.10): computed in code.
+  - 5 = a dated anniversary; the deadline is the anniversary date, shown as "Publish by".
+  - 4 = a live search trend; publish within `google_trends.publish_within_days` (5).
+  - 3 = evergreen.
 
 Hard gates:
 
@@ -139,6 +147,19 @@ Packaging rules the LLM is given ("legit bait"):
 - No "insane/shocking/you won't believe", no fake urgency, no fear hooks.
 - AI, models or production methods are never mentioned.
 - Reddit posts are used only as themes; no private person's story is retold.
+
+## Timely sources
+
+- **Anniversaries.**
+  - Wikipedia's "On this day" feed is read for every day 21-42 days ahead (`anniversaries` in settings), so there is time to produce.
+  - Only round anniversaries are kept: 25, 50, 75, 100, then every 50 years.
+  - Events about wars, battles, disasters, deaths, crimes and the like are dropped in code. The LLM also skips politics and scandals, and never uses a tragedy as the hook.
+  - The linked page is the one named verbatim in the event text, because the first linked page is often generic. Demand uses the median views across the event's pages.
+- **Google Trends.**
+  - The US daily trending-searches RSS is read once per run, for research only.
+  - Sports match-ups ("x vs y") are dropped in code. The LLM keeps a trend only when it points at an evergreen why/how question, and skips celebrities, news, sports results and real-person likeness.
+  - Trends fade fast, so the topic gets a "publish by" date.
+- **Dated picks.** Anniversary and trend topics that pass the policy gate but miss the top 15 are listed under "Dated picks outside the top list", sorted by publish date, so calendar slots aren't lost.
 
 ## Feedback and reweighting
 
@@ -181,6 +202,8 @@ competitor tracking, niche-finder is the upgrade path, and the same YouTube key 
   The LLM step and the policy gate filter those.
 - **Reddit:** unauthenticated feeds are rate-limited. Expect some subreddits to return 429 on a given day. The
   run continues without them.
+- **On-this-day text can be wrong.** The 2001 Hubble entry says "hydrogen"; the first detection was sodium. Treat event text as a lead, never a fact.
+- **Google Trends:** the RSS carries only a few dozen items, mostly sports and celebrities. Many weeks will produce no usable trend topic.
 - **Wikipedia top list:** mostly elections, sport, film and bot noise. The LLM keeps the few learnable items.
 - **Link check:** fact links are fetched once. Some publishers block scripts, so a "did not load" link may still
   be fine. Facts are always unverified until a person ticks them.

@@ -1,4 +1,5 @@
-"""Demand layer: YouTube outliers from reference channels, Wikipedia top articles, Reddit top-of-day.
+"""Demand layer: YouTube outliers from reference channels, Wikipedia top articles, Reddit top-of-day,
+upcoming round-number anniversaries (Wikipedia "On this day") and Google Trends daily searches (US).
 
 YouTube data comes only from the official YouTube Data API v3 (central registry profile in settings.json);
 YouTube pages and feeds are never scraped (API Developer Policies III.E.6). Without a usable profile the
@@ -18,6 +19,7 @@ import statistics
 import sys
 import time
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 import xml.etree.ElementTree as ET  # Reddit Atom feed
 
 from common import DATA, http_get, iso_week, load_central_api, load_json, private_file, run_dir, save_json, settings
@@ -233,6 +235,97 @@ def reddit_top(cfg, ua):
     return out
 
 
+# ---------- Anniversaries (Wikipedia "On this day", 3-6 weeks ahead so there is time to produce) ----------
+
+# Tragedies, wars and deaths are never the hook (policy safety, respectful tone); the LLM step filters the rest.
+GRIM = re.compile(r"\b(defeat|captur|conquer|kill|dies|died|death|dead|murder|massacre|war|wars|battle|invad|invasion|siege|bomb|attack|"
+                  r"terror|assassin|execut|genocide|earthquake|tsunami|hurricane|cyclone|flood|famine|crash|disaster|"
+                  r"explo|sink|sank|fire|shoot|riot|coup|hostage|plague|epidemic|pandemic|slave|deport|persecut)", re.I)
+
+
+def is_round(years):
+    return years > 0 and ((years <= 100 and years % 25 == 0) or years % 50 == 0)
+
+
+def _pageviews_30d(title, ua):
+    end = NOW.date() - dt.timedelta(days=1)
+    start = end - dt.timedelta(days=29)
+    url = ("https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/"
+           f"{urllib.parse.quote(title.replace(' ', '_'), safe='')}/daily/{start:%Y%m%d}/{end:%Y%m%d}")
+    try:
+        return sum(i["views"] for i in json.loads(http_get(url, ua, retries=1))["items"])
+    except Exception:
+        return 0
+
+
+def anniversaries(cfg, ua):
+    acfg = cfg["anniversaries"]
+    today = NOW.date()
+    cands = []
+    for lead in range(acfg["lead_days_min"], acfg["lead_days_max"] + 1):
+        day = today + dt.timedelta(days=lead)
+        try:
+            events = json.loads(http_get(
+                f"https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events/{day:%m}/{day:%d}", ua))["events"]
+        except Exception as e:
+            print(f"  ! on-this-day {day:%m-%d}: {e}", file=sys.stderr)
+            continue
+        for e in events:
+            years = day.year - int(e["year"])
+            if not is_round(years) or GRIM.search(e["text"]) or not e.get("pages"):
+                continue
+            titles = [p["titles"]["normalized"] for p in e["pages"][:5]]
+            # The first linked page is often generic ("Hydrogen"); prefer one named verbatim in the event text.
+            named = [t for t in titles if t in e["text"]]
+            page = named[0] if named else titles[0]
+            cands.append({"date": day.isoformat(), "year": int(e["year"]), "years": years, "text": e["text"],
+                          "page": page, "pages": titles,
+                          "url": "https://en.wikipedia.org/wiki/" + urllib.parse.quote(page.replace(" ", "_")),
+                          "publish_by": day.isoformat()})
+    titles = sorted({t for c in cands for t in c["pages"]})
+    with ThreadPoolExecutor(4) as ex:  # polite: a handful of parallel pageview lookups
+        views = dict(zip(titles, ex.map(lambda t: _pageviews_30d(t, ua), titles)))
+    for c in cands:
+        # median across the event's pages, so one very popular generic page can't inflate demand
+        c["views_30d"] = int(statistics.median(views[t] for t in c.pop("pages")))
+    keep = [c for c in cands if c["views_30d"] >= acfg["min_pageviews_30d"]]
+    keep.sort(key=lambda c: -c["views_30d"])
+    return {"window": [str(today + dt.timedelta(days=acfg["lead_days_min"])),
+                       str(today + dt.timedelta(days=acfg["lead_days_max"]))],
+            "round_events_seen": len(cands), "events": keep[: acfg["max_events"]]}
+
+
+# ---------- Google Trends (daily trending searches RSS; light, research only) ----------
+
+def _traffic(s):
+    m = re.match(r"([\d.]+)\s*([KM]?)", (s or "").replace(",", ""))
+    if not m:
+        return 0
+    return int(float(m.group(1)) * {"": 1, "K": 1_000, "M": 1_000_000}[m.group(2)])
+
+
+def google_trends(cfg, ua):
+    gcfg = cfg["google_trends"]
+    ns = {"ht": "https://trends.google.com/trending/rss"}
+    try:
+        root = ET.fromstring(http_get(f"https://trends.google.com/trending/rss?geo={gcfg['geo']}", ua))
+    except Exception as e:
+        print(f"  ! google trends: {e}", file=sys.stderr)
+        return []
+    publish_by = (NOW.date() + dt.timedelta(days=gcfg["publish_within_days"])).isoformat()
+    out = []
+    for it in root.iter("item"):
+        title = it.findtext("title") or ""
+        if re.search(r"\bvs\.?\b", title, re.I):  # match-ups are sports results, never our topic
+            continue
+        out.append({"query": title, "traffic": _traffic(it.findtext("ht:approx_traffic", namespaces=ns)),
+                    "news": [n.findtext("ht:news_item_title", namespaces=ns) for n in it.findall("ht:news_item", ns)][:2],
+                    "url": "https://trends.google.com/trends/explore?geo=" + gcfg["geo"] + "&q=" + urllib.parse.quote(title),
+                    "publish_by": publish_by})
+    out.sort(key=lambda x: -x["traffic"])
+    return out[: gcfg["max_items"]]
+
+
 def collect(week=None):
     cfg = settings()
     ua = cfg["user_agent"]
@@ -246,7 +339,14 @@ def collect(week=None):
     print("[demand] Reddit top of day ...")
     red = reddit_top(cfg, ua)
     print(f"  posts={len(red)}")
-    signals = {"week": week, "collected_at": NOW.isoformat(), "youtube": yt, "wikipedia": wiki, "reddit": red}
+    print("[demand] Anniversaries 3-6 weeks out ...")
+    ann = anniversaries(cfg, ua)
+    print(f"  window={ann['window'][0]}..{ann['window'][1]} round={ann['round_events_seen']} kept={len(ann['events'])}")
+    print("[demand] Google Trends ...")
+    trends = google_trends(cfg, ua)
+    print(f"  queries={len(trends)}")
+    signals = {"week": week, "collected_at": NOW.isoformat(), "youtube": yt, "wikipedia": wiki, "reddit": red,
+               "anniversaries": ann, "google_trends": trends}
     save_json(run_dir(week) / "signals.json", signals)
     return signals
 

@@ -27,6 +27,17 @@
     ],
     "per_subreddit": 15
   },
+  "anniversaries": {
+    "lead_days_min": 21,
+    "lead_days_max": 42,
+    "min_pageviews_30d": 15000,
+    "max_events": 40
+  },
+  "google_trends": {
+    "geo": "US",
+    "publish_within_days": 5,
+    "max_items": 30
+  },
   "llm": {
     "service": "openrouter",
     "profile": "openrouter--rig-root",
@@ -41,7 +52,8 @@
     "takeaway": 0.15,
     "cast_fit": 0.15,
     "fact_check": 0.1,
-    "policy_safety": 0.15
+    "policy_safety": 0.15,
+    "timeliness": 0.1
   },
   "shortlist": {
     "size": 15,
@@ -51,5 +63,12 @@
   "user_agent": "inkseq-topic-research/0.1 (weekly research script; low volume)",
   "retention": {
     "purge_after_days": 30
+  },
+  "demand_source_weights": {
+    "youtube": 1.0,
+    "wikipedia": 0.9,
+    "reddit": 0.8,
+    "anniversary": 1.0,
+    "google_trends": 0.9
   }
 }

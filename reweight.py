@@ -20,7 +20,7 @@ from pathlib import Path
 from common import DATA, FEEDBACK, load_json, save_json, settings
 
 MIN_VIDEOS = 20
-CRITERIA = ["demand", "packaging", "takeaway", "cast_fit", "fact_check", "policy_safety"]
+CRITERIA = ["demand", "packaging", "takeaway", "cast_fit", "fact_check", "policy_safety", "timeliness"]
 METRICS = ["views_7d", "ctr_pct", "avg_view_duration_s", "returning_viewer_pct"]
 
 
@@ -93,7 +93,7 @@ def main():
     prior = settings()["weights"]
     corr, adjusted = {}, {}
     for c in CRITERIA:
-        corr[c] = round(spearman([float(sel[r["topic_id"]][c]) for r in rows], outcome), 3)
+        corr[c] = round(spearman([float(sel[r["topic_id"]].get(c, 3)) for r in rows], outcome), 3)
         adjusted[c] = prior[c] * max(0.25, 1 + corr[c])
     norm = sum(adjusted.values())
     blended = {c: 0.5 * prior[c] + 0.5 * adjusted[c] / norm * sum(prior.values()) for c in CRITERIA}
