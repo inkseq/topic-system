@@ -40,7 +40,7 @@
   },
   "llm": {
     "service": "openrouter",
-    "profile": "openrouter--rig-root",
+    "profile": "openrouter--inkseq-chat",
     "model": "anthropic/claude-sonnet-5.5",
     "batch_size": 8,
     "max_usd_per_run": 1.8,
