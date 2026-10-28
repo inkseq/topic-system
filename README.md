@@ -92,7 +92,7 @@ names are in `config/settings.json`.
 | Need | Profile | Status | Fallback |
 |---|---|---|---|
 | YouTube Data API v3 | `youtube / youtube--topic-system-20261027--v2`; base_url must be `https://www.googleapis.com/youtube/v3` | Works (2026-10-27): 32 channels, 1,449 uploads | The YouTube step is skipped with a message. Hand-pasted rows in `data/manual_videos.csv` still work. YouTube pages and feeds are never scraped. |
-| LLM (Claude via OpenRouter, `anthropic/claude-sonnet-5.5`) | `openrouter / openrouter--inkseq-chat` | Works (live test 2026-10-28). The old `openrouter--rig-root` and `openrouter--inkseq` profiles return 401. | `--manual` mode |
+| LLM (Claude via OpenRouter, `anthropic/claude-sonnet-5.5`) | `openrouter / openrouter--topic-system-20261028` | Dedicated key in the Inkseq OpenRouter workspace; works (live test 2026-10-28). The old `openrouter--rig-root` and `openrouter--inkseq` profiles return 401. | `--manual` mode |
 
 The YouTube step costs 1 quota unit per call: `channels.list` → uploads playlist → `playlistItems.list` →
 `videos.list`. It never uses `search.list`, which costs 100 units.
