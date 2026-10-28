@@ -1,0 +1,373 @@
+<title>Inkseq Idea Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one full-bleed 3D field; quiet overlays at the edges; a detail drawer that slides in from the right (bottom sheet on phones). */
+:root {
+  color-scheme: dark;
+  --ink: #0a0c13;
+  --ink-raised: #121625;
+  --ink-line: #262c45;
+  --paper: #e9ecf6;
+  --muted: #8f97b5;
+  --glow: #8fd3ff;
+  --amber: #ffc46b;
+  --yt: #ff5d5d;
+  --rd: #ff8a4c;
+  --wk: #c9cfdf;
+  --good: #6fe3a5;
+  --warn: #ffb35c;
+  --display: "Syne", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+html, body { height: 100%; }
+body { background: var(--ink); color: var(--paper); font-family: var(--body); overflow: hidden; }
+#graph { position: fixed; inset: 0; }
+.overlay { position: fixed; z-index: 5; pointer-events: none; }
+.overlay > * { pointer-events: auto; }
+.top { top: calc(12px + env(safe-area-inset-top, 0px)); left: 0; right: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+.brand { display: grid; gap: 4px; max-width: 440px; }
+.brand h1 { font-family: var(--display); font-weight: 800; font-size: clamp(22px, 3.2vw, 32px); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+.brand p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.brand .stats { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.controls { display: grid; gap: 8px; justify-items: end; max-width: min(520px, 100%); }
+.search { display: flex; gap: 8px; width: 100%; justify-content: flex-end; }
+.search input { width: min(280px, 100%); background: var(--ink-raised); color: var(--paper); border: 1px solid var(--ink-line);
+  border-radius: 999px; padding: 8px 14px; font: 14px var(--body); }
+.search input:focus-visible, button:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.chip { font: 500 12px var(--body); color: var(--paper); background: color-mix(in srgb, var(--ink-raised) 85%, transparent);
+  border: 1px solid var(--ink-line); border-radius: 999px; padding: 5px 10px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--muted)); }
+.chip[aria-pressed="false"] { opacity: .42; }
+.range { display: flex; gap: 8px; align-items: center; font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.range input { accent-color: var(--glow); width: 120px; }
+.hint { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px));
+  font: 12px var(--mono); color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); display: inline-block; }
+
+#panel { position: fixed; z-index: 8; top: 0; right: 0; bottom: 0; width: min(420px, 100%); box-sizing: border-box;
+  background: color-mix(in srgb, var(--ink-raised) 94%, transparent); border-left: 1px solid var(--ink-line);
+  backdrop-filter: blur(10px); transform: translateX(105%); transition: transform .28s ease;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px)); overflow-y: auto; }
+#panel.open { transform: none; }
+.ph { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.close { background: none; border: 1px solid var(--ink-line); color: var(--paper); border-radius: 999px; width: 32px; height: 32px; cursor: pointer; font-size: 16px; flex: none; }
+.kind { font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.kind .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+#panel h2 { font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1.2; margin: 6px 0 0; text-wrap: balance; }
+.take { font-size: 15px; line-height: 1.55; margin: 12px 0 0; color: var(--paper); }
+.sec { margin-top: 20px; display: grid; gap: 8px; }
+.sec h3 { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.scorebig { font: 500 13px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 8px; }
+.scorebig b { font: 700 26px var(--display); color: var(--glow); margin-right: 6px; }
+.bars { display: grid; grid-template-columns: 96px 1fr 18px; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--muted); }
+.bar { height: 6px; background: var(--ink-line); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--glow); }
+.bars .v { font-family: var(--mono); color: var(--paper); text-align: right; font-variant-numeric: tabular-nums; }
+.pkg { border: 1px solid var(--ink-line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; }
+.pkg .t { font-weight: 600; font-size: 14px; }
+.pkg .thumb { font: 12px var(--mono); color: var(--amber); }
+.pkg .s { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.beat { font-size: 13px; line-height: 1.5; }
+.beat b { font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--glow); display: block; }
+.facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13px; line-height: 1.45; }
+.facts li { padding-left: 20px; position: relative; }
+.facts li::before { content: ""; position: absolute; left: 0; top: 4px; width: 11px; height: 11px; border: 1px solid var(--muted); border-radius: 3px; }
+a { color: var(--glow); }
+.links { display: grid; gap: 4px; }
+.nb { text-align: left; background: none; border: 1px solid transparent; border-radius: 8px; color: var(--paper); font: 13px var(--body);
+  padding: 6px 8px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.nb:hover { border-color: var(--ink-line); background: color-mix(in srgb, var(--ink) 50%, transparent); }
+.nb .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.nb .sc { margin-left: auto; font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.flag { display: inline-block; font: 500 11px var(--mono); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 50%, transparent); border-radius: 999px; padding: 2px 8px; margin: 0 6px 6px 0; }
+.meta { font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+#labels { position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+  font: 500 12px var(--body); color: var(--paper); padding: 2px 7px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 70%, transparent);
+  border: 1px solid transparent; will-change: transform; }
+.lbl .r { font: 500 10px var(--mono); color: var(--muted); margin-right: 5px; }
+.lbl.hi { border-color: var(--ink-line); }
+.lbl.sel { font: 700 14px var(--display); color: var(--glow); border-color: var(--glow); }
+.filtersBtn { display: none; }
+body.panel-open .controls { margin-right: 430px; }
+@media (max-width: 640px) {
+  .controls { justify-items: stretch; }
+  .chips, .search { justify-content: flex-start; }
+  .brand p, .legend, .hint { display: none; }
+  .filtersBtn { display: inline-flex; }
+  .controls .chips, .controls .range { display: none; }
+  .controls.show .chips, .controls.show .range { display: flex; }
+  body.panel-open .controls { margin-right: 0; }
+  .lbl { font-size: 11px; max-width: 150px; }
+  #panel { top: auto; height: 62%; width: 100%; border-left: 0; border-top: 1px solid var(--ink-line); border-radius: 16px 16px 0 0; transform: translateY(105%); }
+  #panel.open { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { #panel { transition: none; } }
+</style>
+
+<div id="graph" aria-label="3D map of topic ideas"></div>
+<div id="labels"></div>
+
+<div class="overlay top">
+  <div class="brand">
+    <h1>Idea Map</h1>
+    <p>Every candidate topic, wired to its category, the angles that package it and the signals that suggested it. Bigger, brighter ideas scored higher.</p>
+    <div class="stats" id="stats"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="controls" id="controls">
+    <div class="search"><input id="q" type="search" placeholder="Search ideas" aria-label="Search ideas" autocomplete="off"><button class="chip filtersBtn" type="button" id="filtersBtn" aria-expanded="false">Filters</button></div>
+    <div class="chips" id="cats"></div>
+    <div class="chips" id="kinds"></div>
+    <label class="range" for="minScore">min score <input id="minScore" type="range" min="3" max="5" step="0.05" value="3"> <span id="minVal">3.00</span></label>
+  </div>
+</div>
+<div class="overlay hint">drag to orbit · scroll to zoom · click a node</div>
+
+<aside id="panel" aria-live="polite"><div id="pbody"></div></aside>
+
+<script id="data" type="application/json">__DATA__</script>
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.0/dist/3d-force-graph.min.js"></script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById("data").textContent);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const css = getComputedStyle(document.documentElement);
+  const tok = n => css.getPropertyValue(n).trim();
+  const CAT_HUES = ["#8fd3ff", "#b79bff", "#6fe3a5", "#ff9ec7", "#ffd36b", "#7ff0e6", "#ffa36b", "#a8c4ff", "#d4f27a", "#f29bff", "#9be7ff", "#ffb8a0"];
+  const cats = [...new Set(DATA.nodes.filter(n => n.kind === "topic").map(n => n.category))].sort();
+  const catColor = Object.fromEntries(cats.map((c, i) => [c, CAT_HUES[i % CAT_HUES.length]]));
+  const KIND = {
+    topic: { label: "Idea" }, category: { label: "Category", color: tok("--paper") }, angle: { label: "Angle", color: tok("--amber") },
+    youtube: { label: "YouTube outlier", color: tok("--yt") }, reddit: { label: "Reddit post", color: tok("--rd") }, wikipedia: { label: "Wikipedia", color: tok("--wk") },
+    dense: { label: "Deep source", color: "#7ff0c8" }, anniversary: { label: "Anniversary", color: "#d9a8ff" },
+    trend: { label: "Search trend", color: "#ffe27a" }, favorite: { label: "Our favourite", color: "#ff9ec7" }
+  };
+  const kindOf = k => KIND[k] || { label: k, color: tok("--muted") };
+  const colorOf = n => n.kind === "topic" ? catColor[n.category] : n.kind === "category" ? catColor[n.name.replace(/ /g, "-")] || KIND.category.color : kindOf(n.kind).color;
+  const SOURCE_KINDS = [...new Set(DATA.nodes.map(n => n.kind))].filter(k => !["topic", "category"].includes(k));
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = v => v == null ? "–" : v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? Math.round(v / 1e3) + "k" : String(v);
+
+  const byId = new Map(DATA.nodes.map(n => [n.id, n]));
+  const nbrs = new Map(DATA.nodes.map(n => [n.id, new Set()]));
+  const linksOf = new Map(DATA.nodes.map(n => [n.id, []]));
+  DATA.links.forEach(l => { nbrs.get(l.source).add(l.target); nbrs.get(l.target).add(l.source); linksOf.get(l.source).push(l); linksOf.get(l.target).push(l); });
+
+  // stats + legend
+  const m = DATA.meta;
+  const f = m.funnel;
+  document.getElementById("stats").textContent = (m.positioning ? `${m.positioning.name}${m.positioning.status === "provisional" ? " (provisional)" : ""} · ` : "") +
+    `${m.week} · ` + (f ? `${f.ideas} ideas → ${f.packaged} packaged → ${f.shortlisted} shortlisted` : `${m.counts.topic} ideas`) +
+    ` · ${m.signals.youtube_videos} videos on ${m.signals.youtube_channels} channels`;
+  document.getElementById("legend").innerHTML = ["category", ...SOURCE_KINDS]
+    .map(k => `<span><i style="--c:${kindOf(k).color}"></i>${kindOf(k).label}</span>`).join("");
+
+  // filters
+  const state = { cats: new Set(cats), kinds: new Set(SOURCE_KINDS), min: 3, q: "" };
+  const catBox = document.getElementById("cats");
+  cats.forEach(c => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.type = "button"; b.setAttribute("aria-pressed", "true"); b.style.setProperty("--c", catColor[c]);
+    b.innerHTML = `<span class="dot"></span>${esc(c.replace(/-/g, " "))}`;
+    b.onclick = () => { state.cats.has(c) ? state.cats.delete(c) : state.cats.add(c); b.setAttribute("aria-pressed", state.cats.has(c)); refresh(); };
+    catBox.appendChild(b);
+  });
+  const kindBox = document.getElementById("kinds");
+  SOURCE_KINDS.map(k => [k, k === "angle" ? "Angles" : kindOf(k).label]).forEach(([k, label]) => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.type = "button"; b.setAttribute("aria-pressed", "true"); b.style.setProperty("--c", kindOf(k).color);
+    b.innerHTML = `<span class="dot"></span>${label}`;
+    b.onclick = () => { state.kinds.has(k) ? state.kinds.delete(k) : state.kinds.add(k); b.setAttribute("aria-pressed", state.kinds.has(k)); refresh(); };
+    kindBox.appendChild(b);
+  });
+  const minEl = document.getElementById("minScore"), minVal = document.getElementById("minVal");
+  minEl.oninput = () => { state.min = +minEl.value; minVal.textContent = state.min.toFixed(2); refresh(); };
+  const qEl = document.getElementById("q");
+  qEl.oninput = () => { state.q = qEl.value.trim().toLowerCase(); refresh(); };
+  qEl.onkeydown = e => {
+    if (e.key !== "Enter" || !state.q) return;
+    const hit = DATA.nodes.filter(n => n.kind === "topic" && visible(n)).sort((a, b) => b.score - a.score)[0];
+    if (hit) select(hit);
+  };
+
+  const topicVisible = n => state.cats.has(n.category) && n.score >= state.min && (!state.q || (n.name + " " + n.takeaway).toLowerCase().includes(state.q));
+  const visible = n => {
+    if (n.kind === "topic") return topicVisible(n);
+    if (n.kind === "category") return state.cats.has(n.name.replace(/ /g, "-"));
+    if (!state.kinds.has(n.kind)) return false;
+    return [...nbrs.get(n.id)].some(id => { const t = byId.get(id); return t.kind === "topic" && topicVisible(t); });
+  };
+  const idOf = x => typeof x === "object" ? x.id : x;
+
+  // highlight state
+  let selected = null; const hiNodes = new Set(); const hiLinks = new Set();
+  const nodeSize = n => n.kind === "topic" ? 1 + Math.pow(n.score - 2.5, 2.4) * 1.6 : n.kind === "category" ? 7 : n.kind === "angle" ? 3.5 : 0.8;
+  const fb = document.getElementById("filtersBtn"), ctl = document.getElementById("controls");
+  fb.onclick = () => { const on = ctl.classList.toggle("show"); fb.setAttribute("aria-expanded", on); };
+
+  const el = document.getElementById("graph");
+  const Graph = ForceGraph3D({ controlType: "orbit" })(el)
+    .backgroundColor(tok("--ink"))
+    .showNavInfo(false)
+    .graphData(DATA)
+    .nodeId("id")
+    .nodeVal(nodeSize)
+    .nodeRelSize(2.4)
+    .nodeResolution(14)
+    .nodeOpacity(0.92)
+    .nodeColor(n => selected && !hiNodes.has(n.id) ? "#2a3048" : colorOf(n))
+    .nodeLabel(n => `<div style="font:13px IBM Plex Sans,system-ui;background:#121625;border:1px solid #262c45;padding:6px 9px;border-radius:8px;max-width:280px;color:#e9ecf6">
+        <div style="font:11px IBM Plex Mono,monospace;color:#8f97b5;text-transform:uppercase;letter-spacing:.1em">${kindOf(n.kind).label}${n.kind === "topic" ? " · " + n.score.toFixed(2) : ""}</div>${esc(n.name)}</div>`)
+    .nodeVisibility(visible)
+    .linkVisibility(l => visible(typeof l.source === "object" ? l.source : byId.get(l.source)) && visible(typeof l.target === "object" ? l.target : byId.get(l.target)))
+    .linkColor(l => hiLinks.has(l) ? "#8fd3ff" : l.kind === "related" ? "#ffc46b" : "#3a4266")
+    .linkOpacity(0.5)
+    .linkWidth(l => hiLinks.has(l) ? 1.4 : l.kind === "related" ? 0.6 : 0)
+    .linkDirectionalParticles(l => !reduce && hiLinks.has(l) ? 3 : 0)
+    .linkDirectionalParticleWidth(1.8)
+    .linkDirectionalParticleColor(() => "#e9ecf6")
+    .onNodeClick(select)
+    .onBackgroundClick(clear);
+
+  Graph.d3Force("charge").strength(n => n.kind === "category" ? -260 : n.kind === "topic" ? -70 : -25);
+  Graph.d3Force("link").distance(l => l.kind === "category" ? 55 : l.kind === "angle" ? 80 : l.kind === "related" ? 40 : 28);
+
+  const fit = () => Graph.width(innerWidth).height(innerHeight);
+  addEventListener("resize", fit); fit();
+
+  function refresh() {
+    Graph.nodeVisibility(Graph.nodeVisibility()).linkVisibility(Graph.linkVisibility());
+  }
+
+  // floating HTML labels: shortlisted ideas always, plus whatever is lit around the selection
+  const layer = document.getElementById("labels");
+  const labelEls = new Map();
+  function labelFor(n) {
+    let e = labelEls.get(n.id);
+    if (!e) {
+      e = document.createElement("div"); e.className = "lbl";
+      e.innerHTML = (n.kind === "topic" && n.rank ? `<span class="r">#${n.rank}</span>` : "") + esc(n.name);
+      e.onclick = () => select(n);
+      layer.appendChild(e); labelEls.set(n.id, e);
+    }
+    return e;
+  }
+  function tick() {
+    const cam = Graph.camera(), want = new Set();
+    DATA.nodes.forEach(n => {
+      if (!visible(n) || n.x == null) return;
+      if ((n.kind === "topic" && n.rank && n.rank <= 8 && !selected) || hiNodes.has(n.id) || (n.kind === "category" && !selected)) want.add(n.id);
+    });
+    labelEls.forEach((e, id) => { if (!want.has(id)) e.hidden = true; });
+    const me = cam.matrixWorld.elements, fwd = { x: -me[8], y: -me[9], z: -me[10] };
+    want.forEach(id => {
+      const n = byId.get(id), e = labelFor(n);
+      const dx = n.x - cam.position.x, dy = n.y - cam.position.y, dz = n.z - cam.position.z;
+      if (dx * fwd.x + dy * fwd.y + dz * fwd.z <= 0) { e.hidden = true; return; }
+      const p = Graph.graph2ScreenCoords(n.x, n.y, n.z);
+      e.hidden = false;
+      e.className = "lbl" + (selected && n.id === selected.id ? " sel" : hiNodes.has(id) ? " hi" : "");
+      e.style.transform = `translate(${Math.round(p.x + 8)}px, ${Math.round(p.y - 9)}px)`;
+    });
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  function paint() {
+    Graph.nodeColor(Graph.nodeColor()).linkColor(Graph.linkColor()).linkWidth(Graph.linkWidth()).linkDirectionalParticles(Graph.linkDirectionalParticles());
+  }
+  function select(n) {
+    selected = n; hiNodes.clear(); hiLinks.clear(); hiNodes.add(n.id);
+    nbrs.get(n.id).forEach(id => hiNodes.add(id));
+    linksOf.get(n.id).forEach(l => hiLinks.add(l));
+    paint();
+    if (n.x != null) {
+      const d = 260, r = 1 + d / Math.hypot(n.x || 1, n.y || 1, n.z || 1);
+      Graph.cameraPosition({ x: n.x * r, y: n.y * r, z: n.z * r }, n, reduce ? 0 : 1200);
+    }
+    render(n);
+  }
+  function clear() {
+    selected = null; hiNodes.clear(); hiLinks.clear(); paint();
+    document.getElementById("panel").classList.remove("open");
+    document.body.classList.remove("panel-open");
+  }
+
+  const neighbourList = (n, kinds) => [...nbrs.get(n.id)].map(id => byId.get(id)).filter(x => kinds.includes(x.kind))
+    .sort((a, b) => (b.score || 0) - (a.score || 0));
+  const nbBtn = x => `<button class="nb" type="button" data-id="${esc(x.id)}" style="--c:${colorOf(x)}"><span class="dot"></span><span>${esc(x.name)}</span>${x.kind === "topic" ? `<span class="sc">${x.score.toFixed(2)}</span>` : x.outlier ? `<span class="sc">×${x.outlier}</span>` : ""}</button>`;
+  const LABEL = { demand: "Demand", packaging: "Packaging", takeaway: "Takeaway", cast_fit: "Cast fit", fact_check: "Fact-check", policy_safety: "Policy safety",
+    timeliness: "Timeliness", emotional_pull: "Emotional pull", ccn: "Core/casual/new", taste: "Our taste", novelty: "Novelty" };
+
+  function render(n) {
+    let h = `<div class="ph"><div><div class="kind" style="--c:${colorOf(n)}"><span class="dot"></span>${kindOf(n.kind).label}${n.kind === "topic" && n.rank ? ` · shortlist #${n.rank}` : ""}${n.pillar ? ` · ${esc(n.pillar.replace(/-/g, " "))}` : ""}</div>
+      <h2>${esc(n.name)}</h2></div><button class="close" type="button" id="closeP" aria-label="Close">×</button></div>`;
+    if (n.kind === "topic") {
+      h += `<div class="scorebig"><b>${n.score.toFixed(2)}</b>of 5 · ${esc(n.category.replace(/-/g, " "))}</div>`;
+      h += `<p class="take">${esc(n.takeaway)}</p>`;
+      if (n.flags && n.flags.length) h += `<div>${n.flags.map(f => `<span class="flag">${esc(f)}</span>`).join("")}</div>`;
+      h += `<div class="sec"><h3>Scores</h3><div class="bars">${Object.entries(n.scores).map(([k, v]) =>
+        `<span>${LABEL[k] || esc(k)}</span><span class="bar"><i style="width:${v * 20}%"></i></span><span class="v">${v}</span>`).join("")}</div></div>`;
+      if (n.ccn) h += `<div class="sec"><h3>Core · casual · new</h3><div class="bars">${["core", "casual", "new"].map(k => n.ccn[k] ?
+        `<span title="${esc(n.ccn[k].reason)}">${k}</span><span class="bar"><i style="width:${n.ccn[k].score * 20}%"></i></span><span class="v">${n.ccn[k].score}</span>` : "").join("")}</div>
+        ${n.audience_flag ? `<span class="flag">${esc(n.audience_flag)}</span>` : ""}</div>`;
+      if (n.conflict) h += `<div class="sec"><h3>Conflict</h3><div class="pkg"><span class="s"><b>${esc(n.conflict.who)}</b> wants ${esc(n.conflict.wants)}. But ${esc(n.conflict.goes_wrong)}. Payoff: ${esc(n.conflict.payoff_fact)}.</span></div></div>`;
+      if (n.why) h += `<div class="sec"><h3>Why people want it</h3><div class="pkg"><span class="s">${esc(n.why)}</span></div></div>`;
+      if (n.thumbnails && n.thumbnails.length) {
+        h += `<div class="sec"><h3>Thumbnail test (A/B/C)</h3>${n.thumbnails.map(p => `<div class="pkg"><span class="thumb">${esc(p.kind)} · ${esc(p.thumb_text)}</span><span class="t">${esc(p.title)}</span>
+          <span class="s">${esc(p.visual)}</span><span class="s">first 5 s: ${esc(p.first_5s)}</span></div>`).join("")}</div>`;
+      } else {
+        h += `<div class="sec"><h3>Best packages</h3>${n.packages.map(p => `<div class="pkg"><span class="t">${esc(p.title)}</span>
+          <span class="thumb">thumbnail: ${esc(p.thumb_text)}</span><span class="s">first 3 s: ${esc(p.first_3s)}</span></div>`).join("")}</div>`;
+      }
+      if (n.short_cuts && n.short_cuts.length) h += `<div class="sec"><h3>Shorts to cut</h3>${n.short_cuts.map(s => `<div class="pkg"><span class="t">${esc(s.moment)}</span><span class="s">hook: ${esc(s.hook)} → ${esc(s.payoff)}</span></div>`).join("")}</div>`;
+      if (n.outline.length) h += `<div class="sec"><h3>Story</h3>${n.outline.map(b => `<div class="beat"><b>${esc(b.beat)}</b>${b.lines.map(esc).join("<br>")}</div>`).join("")}</div>`;
+      if (n.facts.length) h += `<div class="sec"><h3>Facts to verify</h3><ul class="facts">${n.facts.map(f => `<li>${esc(f.claim)}${f.url ? ` <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source || "source")}</a>` : ""}</li>`).join("")}</ul></div>`;
+      const ev = neighbourList(n, SOURCE_KINDS.filter(k => k !== "angle"));
+      if (ev.length) h += `<div class="sec"><h3>Signals</h3><div class="links">${ev.map(nbBtn).join("")}</div></div>`;
+      const rel = neighbourList(n, ["topic"]);
+      if (rel.length) h += `<div class="sec"><h3>Shares a signal with</h3><div class="links">${rel.map(nbBtn).join("")}</div></div>`;
+      const hubs = neighbourList(n, ["category", "angle"]);
+      h += `<div class="sec"><h3>Connected to</h3><div class="links">${hubs.map(nbBtn).join("")}</div></div>`;
+    } else if (n.kind === "category" || n.kind === "angle") {
+      const ts = neighbourList(n, ["topic"]);
+      h += `<p class="meta">${ts.length} ideas · average ${(ts.reduce((s, t) => s + t.score, 0) / (ts.length || 1)).toFixed(2)}</p>`;
+      h += `<div class="sec"><h3>Ideas</h3><div class="links">${ts.map(nbBtn).join("")}</div></div>`;
+    } else {
+      const bits = [];
+      if (n.channel) bits.push(esc(n.channel));
+      if (n.subreddit) bits.push("r/" + esc(n.subreddit));
+      if (n.feed) bits.push(esc(n.feed));
+      if (n.blurb) bits.push(esc(n.blurb));
+      if (n.views != null) bits.push(fmt(n.views) + " views");
+      if (n.outlier) bits.push(`×${n.outlier} vs neighbouring uploads`);
+      if (n.format) bits.push(esc(n.format));
+      h += `<p class="meta">${bits.join(" · ")}</p>`;
+      if (n.url) h += `<p><a href="${esc(n.url)}" target="_blank" rel="noopener">Open source ↗</a></p>`;
+      h += `<div class="sec"><h3>Ideas it suggested</h3><div class="links">${neighbourList(n, ["topic"]).map(nbBtn).join("")}</div></div>`;
+    }
+    const pb = document.getElementById("pbody");
+    pb.innerHTML = h;
+    pb.querySelectorAll(".nb").forEach(b => b.onclick = () => select(byId.get(b.dataset.id)));
+    document.getElementById("closeP").onclick = clear;
+    const panel = document.getElementById("panel");
+    panel.classList.add("open"); panel.scrollTop = 0;
+    document.body.classList.add("panel-open");
+  }
+
+  addEventListener("keydown", e => { if (e.key === "Escape") clear(); });
+  // frame the whole map once the layout has settled
+  let framed = false;
+  const frame = () => { if (!framed && !selected) { framed = true; Graph.zoomToFit(reduce ? 0 : 900, 10); } };
+  Graph.cooldownTime(4500).onEngineStop(frame);
+})();
+</script>

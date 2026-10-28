@@ -26,3 +26,5 @@
 !/config/favorites.example.md
 !/config/example_script.json
 !/config/example_script.md
+!/idea_map/template.html
+!/idea_map/build.py

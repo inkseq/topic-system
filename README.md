@@ -117,6 +117,15 @@ These rules come from the YouTube API Services Developer Policies
   - The 1-5 demand rating is our coarse internal judgement. If Google or the owner wants a stricter reading, drop the YouTube signal and keep Wikipedia and Reddit.
 - **Our own channel.** The numbers in `data/feedback.csv` are fine, whether the owner types them in or a later version pulls them through the authorised YouTube Analytics API. Data pulled that way must be refreshed or re-verified at least every 30 days.
 
+## Weekly schedule (Claude desktop scheduled task, active)
+
+The owner prefers to spend the Claude subscription rather than API credit, so the weekly run is a Claude
+desktop scheduled task ("Weekly topic → script run", Mondays 08:00 local). It runs
+`python run_weekly.py --manual`, answers every `data/<week>/llm/*.prompt.md` itself by writing the matching
+`*.response.json`, reruns until the shortlist, memo and script exist, then renders
+`python idea_map/build.py` and republishes the private Idea Map page. The OpenRouter profile stays as a
+fallback for unattended script-only runs. The desktop app must be open; a missed run starts on next launch.
+
 ## Weekly schedule (Windows Task Scheduler; not installed)
 
 This runs every Monday at 08:00 local time. Install it only once the LLM profile works: an unattended run
