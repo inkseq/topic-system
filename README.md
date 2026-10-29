@@ -120,11 +120,12 @@ These rules come from the YouTube API Services Developer Policies
 ## Weekly schedule (Claude desktop scheduled task, active)
 
 The owner prefers to spend the Claude subscription rather than API credit, so the weekly run is a Claude
-desktop scheduled task ("Weekly topic → script run", Mondays 08:00 local). It runs
+desktop scheduled task ("【每周一】选题到剧本（本地）", Mondays 08:00 local). It runs
 `python run_weekly.py --manual`, answers every `data/<week>/llm/*.prompt.md` itself by writing the matching
-`*.response.json`, reruns until the shortlist, memo and script exist, then renders
-`python idea_map/build.py` and republishes the private Idea Map page. The OpenRouter profile stays as a
-fallback for unattended script-only runs. The desktop app must be open; a missed run starts on next launch.
+`*.response.json`, and reruns until the shortlist, memo and script exist. It stays local: no git push and no
+page publishing; updating the Idea Map page or pushing code is done in a normal session. The OpenRouter
+profile stays as a fallback for unattended script-only runs. The desktop app must be open; a missed run
+starts on next launch.
 
 ## Weekly schedule (Windows Task Scheduler; not installed)
 
